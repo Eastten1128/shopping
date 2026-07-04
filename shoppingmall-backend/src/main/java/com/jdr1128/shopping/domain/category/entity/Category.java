@@ -33,5 +33,17 @@ public class Category extends BaseEntity {
         this.isDeleted = false;
     }
 
+    //Category 수정
+    public void updateCategoryName(String categoryName){
+        this.categoryName = categoryName;
+
+    }
+
+    //Category 삭제
+    public void delete(){
+        this.isDeleted = true;
+        this.deleteAt = LocalDateTime.now();
+    }
+
 
 }
