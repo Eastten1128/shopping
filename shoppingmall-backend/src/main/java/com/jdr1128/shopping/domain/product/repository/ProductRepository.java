@@ -4,10 +4,16 @@ import com.jdr1128.shopping.domain.product.entity.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product,Long> {
 
-    List<Product> findByCategory_CategoryId(Long categoryId);
+    List<Product> findByIsDeletedFalse();
 
-    List<Product> findBySeller_MemberId(Long sellerId);
+    Optional<Product> findByProductIdAndIsDeletedFalse(Long productId);
+
+    List<Product> findByCategory_CategoryIdAndIsDeletedFalse(Long categoryId);
+
+    List<Product> findBySeller_MemberIdAndIsDeletedFalse(Long sellerId);
+
 }

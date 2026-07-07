@@ -65,9 +65,63 @@ public class Product extends BaseEntity {
         this.productStatus = productStatus;
         this.isDeleted = false;
 
-
-
     }
 
+    public Long getProductId() {
+        return productId;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public Member getSeller() {
+        return seller;
+    }
+
+    public String getProductName() {
+        return productName;
+    }
+
+    public int getPrice() {
+        return price;
+    }
+
+    public int getStock() {
+        return stock;
+    }
+
+    public ProductStatus getProductStatus() {
+        return productStatus;
+    }
+
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+
+    public LocalDateTime getDeleteAt() {
+        return deleteAt;
+    }
+
+    public void updateProduct(
+            Category category,
+            String productName,
+            int price,
+            int stock,
+            ProductStatus productStatus
+    ){
+        this.category = category;
+        this.productName = productName;
+        this.price = price;
+        this.stock = stock;
+        this.productStatus = productStatus;
+    }
+
+    public void delete(){
+        this.isDeleted = true;
+        this.productStatus = ProductStatus.STOPPED;
+        this.deleteAt = LocalDateTime.now();
+
+    }
 
 }
