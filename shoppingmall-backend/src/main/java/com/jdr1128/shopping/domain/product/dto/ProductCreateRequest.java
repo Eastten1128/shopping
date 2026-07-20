@@ -9,9 +9,12 @@ public class ProductCreateRequest {
     @NotNull(message = "카테고리 ID는 필수입니다.")
     private Long categoryId;
 
+    //9단계에서 제거
+    //임의로 sellerId 지정 -> 로그인한 사용자를 판매자로 사용.
+    /*
     @NotNull(message = "판매자 ID는 필수입니다.")
     private Long sellerId;
-
+    */
     @NotNull(message = "상품 이름은 필수입니다.")
     private String productName;
 
@@ -32,9 +35,11 @@ public class ProductCreateRequest {
         return categoryId;
     }
 
+    /*
     public Long getSellerId() {
         return sellerId;
     }
+    */
 
     public String getProductName() {
         return productName;

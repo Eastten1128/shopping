@@ -31,7 +31,7 @@ public class Member extends BaseEntity {
     private Role role;
 
     @Column(name = "is_deleted", nullable = false)
-    private boolean isDeleated = false;
+    private boolean isDeleted = false;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

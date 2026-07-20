@@ -4,8 +4,10 @@ import com.jdr1128.shopping.domain.product.dto.ProductCreateRequest;
 import com.jdr1128.shopping.domain.product.dto.ProductResponse;
 import com.jdr1128.shopping.domain.product.dto.ProductUpdateRequest;
 import com.jdr1128.shopping.domain.product.service.ProductService;
+import com.jdr1128.shopping.global.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -23,8 +25,11 @@ public class ProductController {
 
     @PostMapping
     public ResponseEntity<ProductResponse> createProduct(
-            @Valid @RequestBody ProductCreateRequest request){
-        ProductResponse response = productService.createProduct(request);
+            @Valid @RequestBody ProductCreateRequest request,
+            //로그인 정보 추가
+            @AuthenticationPrincipal CustomUserDetails userDetails){
+        ProductResponse response = productService.createProduct(request,
+                userDetails.getMemberId());
 
         return ResponseEntity
                 .created(URI.create("/api/products/" + response.getProductId()))
@@ -53,9 +58,15 @@ public class ProductController {
     @PatchMapping("/{productId}")
     public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable Long productId,
-            @Valid @RequestBody ProductUpdateRequest request
+            @Valid @RequestBody ProductUpdateRequest request,
+            //로그인 정보 추가
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ){
-        ProductResponse response = productService.updateProduct(productId, request);
+        ProductResponse response = productService.updateProduct(
+                productId,
+                request,
+                userDetails.getMemberId(),
+                userDetails.getMember().getRole());
 
         return ResponseEntity.ok(response);
     }
@@ -63,9 +74,15 @@ public class ProductController {
     //상품 삭제
     @DeleteMapping("/{productId}")
     public ResponseEntity<Void> deleteProduct(
-            @PathVariable Long productId
+            @PathVariable Long productId,
+            //로그인 정보 추가
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ){
-        productService.deleteProduct(productId);
+        productService.deleteProduct(
+                productId,
+                userDetails.getMemberId(),
+                userDetails.getMember().getRole()
+        );
 
         return ResponseEntity.noContent().build();
     }
