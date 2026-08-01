@@ -19,10 +19,10 @@ public class ProductCreateRequest {
     private String productName;
 
     @NotNull(message = "상품 가격은 필수입니다.")
-    private Integer price;
+    private int price;
 
     @NotNull(message = "상품 재고수는 필수입니다.")
-    private Integer stock;
+    private int stock;
 
     @NotNull(message = "상품 상태는 필수입니다.")
     private ProductStatus productStatus;

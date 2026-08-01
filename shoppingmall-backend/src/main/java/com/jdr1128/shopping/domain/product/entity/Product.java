@@ -124,4 +124,13 @@ public class Product extends BaseEntity {
 
     }
 
+    //상품 재고 감소
+    public void decreaseStock(int quantity){
+        this.stock -= quantity;
+
+        if(this.stock == 0){
+            this.productStatus = ProductStatus.SOLD_OUT;
+        }
+    }
+
 }
