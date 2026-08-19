@@ -5,13 +5,16 @@ import com.jdr1128.shopping.domain.member.entity.Member;
 import com.jdr1128.shopping.domain.member.entity.Role;
 import com.jdr1128.shopping.global.common.BaseEntity;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "products")
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Product extends BaseEntity {
 
     @Id
@@ -46,10 +49,6 @@ public class Product extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deleteAt;
 
-    protected Product() {
-
-    }
-
     public Product(
             Category category,
             Member seller,
@@ -67,42 +66,8 @@ public class Product extends BaseEntity {
 
     }
 
-    public Long getProductId() {
-        return productId;
-    }
-
-    public Category getCategory() {
-        return category;
-    }
-
-    public Member getSeller() {
-        return seller;
-    }
-
-    public String getProductName() {
-        return productName;
-    }
-
-    public int getPrice() {
-        return price;
-    }
-
-    public int getStock() {
-        return stock;
-    }
-
-    public ProductStatus getProductStatus() {
-        return productStatus;
-    }
-
-    public boolean isDeleted() {
-        return isDeleted;
-    }
-
-    public LocalDateTime getDeleteAt() {
-        return deleteAt;
-    }
-
+    //상품 수정
+    //updateAt -> BaseEntity @LastModifiedDate 자동 처리
     public void updateProduct(
             Category category,
             String productName,
@@ -117,6 +82,7 @@ public class Product extends BaseEntity {
         this.productStatus = productStatus;
     }
 
+    //상품 제거 - 소프트딜리트
     public void delete(){
         this.isDeleted = true;
         this.productStatus = ProductStatus.STOPPED;
@@ -128,7 +94,16 @@ public class Product extends BaseEntity {
     public void decreaseStock(int quantity){
         this.stock -= quantity;
 
-        if(this.stock == 0){
+        if(this.stock < 0){
+            this.productStatus = ProductStatus.SOLD_OUT;
+        }
+    }
+
+    //상품 재고 증가
+    public void increaseStock(int quantity) {
+        this.stock += quantity;
+
+        if(this.stock > 0 && this.productStatus == ProductStatus.SOLD_OUT){
             this.productStatus = ProductStatus.SOLD_OUT;
         }
     }

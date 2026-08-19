@@ -5,6 +5,7 @@ import com.jdr1128.shopping.domain.category.exception.CategoryNotFoundException;
 import com.jdr1128.shopping.domain.category.repository.CategoryRepository;
 import com.jdr1128.shopping.domain.member.entity.Member;
 import com.jdr1128.shopping.domain.member.entity.Role;
+import com.jdr1128.shopping.domain.member.exception.MemberNotFoundException;
 import com.jdr1128.shopping.domain.member.repository.MemberRepository;
 import com.jdr1128.shopping.domain.product.dto.ProductCreateRequest;
 import com.jdr1128.shopping.domain.product.dto.ProductResponse;
@@ -23,14 +24,14 @@ import java.util.List;
 @Transactional
 public class ProductService {
 
-    @Autowired
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final MemberRepository memberRepository;
 
-    public ProductService(ProductRepository productRepository,
-                          CategoryRepository categoryRepository,
-                          MemberRepository memberRepository
+    public ProductService(
+            ProductRepository productRepository,
+            CategoryRepository categoryRepository,
+            MemberRepository memberRepository
     ) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
@@ -42,13 +43,18 @@ public class ProductService {
     @Transactional
     public ProductResponse createProduct(
             ProductCreateRequest request,
-            Long sellerId){
+            Long sellerId
+    ){
+        //request 받은 categoryId가 존재하는지 체크하고 category 객체 생성
         Category category = categoryRepository.findByCategoryIdAndIsDeletedFalse(request.getCategoryId())
                 .orElseThrow(CategoryNotFoundException::new);
 
+        //판매자가 존재하는지 체크하고 Member 객체 생성
         Member seller = memberRepository.findById(sellerId)
-                .orElseThrow(() -> new IllegalArgumentException("판매자를 찾을 수 없습니다."));
+                //.orElseThrow(() -> new IllegalArgumentException("판매자를 찾을 수 없습니다."));
+                .orElseThrow(MemberNotFoundException::new);
 
+        //Product 객체 생성
         Product product = new Product(
                 category,
                 seller,
@@ -58,7 +64,9 @@ public class ProductService {
                 request.getProductStatus()
         );
 
+        //상품 저장
         Product savedProduct = productRepository.save(product);
+        //컨트롤러에 response 리턴
         return ProductResponse.from(savedProduct);
     }
 
@@ -74,18 +82,16 @@ public class ProductService {
     //상품 찾기 (ProductId)
     public ProductResponse getProduct(Long productId){
         Product product = findActiveProduct(productId);
-
         return ProductResponse.from(product);
-
     }
 
     //상품 수정
     @Transactional
     public ProductResponse updateProduct(
-            Long productId,
-            ProductUpdateRequest request,
-            Long loginMemberId,
-            Role loginMemberRole
+            Long productId, //컨트롤러에서 받은 상품id
+            ProductUpdateRequest request,   //수정request
+            Long loginMemberId,     //회원Id체크
+            Role loginMemberRole //권한 체크용
     ){
         Product product = findActiveProduct(productId);
 

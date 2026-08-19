@@ -2,14 +2,16 @@ package com.jdr1128.shopping.domain.member.entity;
 
 import com.jdr1128.shopping.global.common.BaseEntity;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "members")
 @Getter
-
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member extends BaseEntity {
 
     @Id
@@ -17,13 +19,13 @@ public class Member extends BaseEntity {
     @Column(name = "member_id")
     private Long memberId;
 
-    @Column(name = "login_id")
+    @Column(name = "login_id", nullable = false, unique = true)
     private String loginId;
 
-    @Column(name = "password")
+    @Column(name = "password", nullable = false)
     private String password;
 
-    @Column(name = "email")
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
     @Enumerated(EnumType.STRING)
@@ -36,9 +38,12 @@ public class Member extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    protected Member(){
+    //lombok - @NoArgsConstructor 어노테이션 대체
+    /*protected Member(){
 
     }
+
+     */
 
     public Member(String loginId, String password, String email, Role role) {
         this.loginId = loginId;

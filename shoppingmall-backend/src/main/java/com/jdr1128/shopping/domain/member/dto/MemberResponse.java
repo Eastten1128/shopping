@@ -9,14 +9,14 @@ import java.time.LocalDateTime;
 
 @Getter
 public class MemberResponse {
-    private String memberId;
+    private Long memberId;
     private String loginId;
     private String email;
     private Role role;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public MemberResponse(String memberId,
+    public MemberResponse(Long memberId,
                           String loginId,
                           String email,
                           Role role,
@@ -33,8 +33,8 @@ public class MemberResponse {
 
     public static MemberResponse from(Member member) {
         return new MemberResponse(
+                member.getMemberId(),
                 member.getLoginId(),
-                member.getPassword(),
                 member.getEmail(),
                 member.getRole(),
                 member.getCreatedAt(),

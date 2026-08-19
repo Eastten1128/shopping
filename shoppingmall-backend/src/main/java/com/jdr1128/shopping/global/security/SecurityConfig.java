@@ -18,9 +18,17 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final CustomAccessDeniedHanlder customAccessDeniedHanlder;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            CustomAuthenticationEntryPoint customAuthenticationEntryPoint,
+            CustomAccessDeniedHanlder customAccessDeniedHanlder) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.authenticationEntryPoint = customAuthenticationEntryPoint;
+        this.customAccessDeniedHanlder = customAccessDeniedHanlder;
+
     }
 
     @Bean
@@ -33,12 +41,14 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint((request, response, authException) ->
+                        /*.authenticationEntryPoint((request, response, authException) ->
                                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
                         )
                         .accessDeniedHandler((request, response, accessDeniedException) ->
                                 response.sendError(HttpServletResponse.SC_FORBIDDEN)
-                        )
+                        )*/
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(customAccessDeniedHanlder)
                 )
                 .authorizeHttpRequests(auth -> auth
                         /**
@@ -75,6 +85,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAnyRole("SELLER", "ADMIN")
 
                         //그 외 요청은 로그인 필요
+                        .requestMatchers("/api/carts/**").authenticated()
+                        .requestMatchers("/api/orders/**").authenticated()
+                        .requestMatchers("/api/payments/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

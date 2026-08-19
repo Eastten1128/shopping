@@ -5,6 +5,7 @@ import com.jdr1128.shopping.domain.cart.entity.CartItem;
 import com.jdr1128.shopping.domain.cart.repository.CartItemRepository;
 import com.jdr1128.shopping.domain.cart.repository.CartRepository;
 import com.jdr1128.shopping.domain.member.entity.Member;
+import com.jdr1128.shopping.domain.member.exception.MemberNotFoundException;
 import com.jdr1128.shopping.domain.member.repository.MemberRepository;
 import com.jdr1128.shopping.domain.order.dto.OrderCreateRequest;
 import com.jdr1128.shopping.domain.order.dto.OrderResponse;
@@ -56,7 +57,8 @@ public class OrderService {
             OrderCreateRequest request
     ){
         Member member = memberRepository.findById(memberId)
-                .orElseThrow(()->new IllegalArgumentException("회원을 찾을 수 없습니다."));
+                //.orElseThrow(()->new IllegalArgumentException("회원을 찾을 수 없습니다."));
+                .orElseThrow(MemberNotFoundException::new);
 
         Cart cart = cartRepository.findByMember_MemberId(memberId)
                 .orElseThrow(EmptyCartException::new);

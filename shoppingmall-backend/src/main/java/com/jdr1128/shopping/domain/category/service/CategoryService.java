@@ -21,26 +21,37 @@ public class CategoryService {
         this.categoryRepository = categoryRepository;
     }
 
+    //카테고리 생성
     @Transactional
     public CategoryResponse createCategory(CategoryRequest categoryRequest) {
+
+        //동일한 카테고리명이 존재하면
         if(categoryRepository.existsByCategoryName(categoryRequest.getCategoryName())) {
+            //예외처리
             throw new DuplicateCategoryNameException();
         }
 
+        //request 기반으로 카테고리 생성
         Category category = new Category(categoryRequest.getCategoryName());
+        //생성한 카테고리를 저장
         Category savedCategory = categoryRepository.save(category);
 
+        //컨트롤러에 response를 전달
         return CategoryResponse.from(savedCategory);
     }
 
+    //카테고리 전체 조회(안지워진것만)
     public List<CategoryResponse> getCategories() {
+        //
         return categoryRepository.findByIsDeletedFalse()
                 .stream()
                 .map(CategoryResponse::from)
                 .toList();
     }
 
+    //카테고리 조회
     public CategoryResponse getCategory(Long categoryId) {
+
         Category category = findActiveCategory(categoryId);
 
         return CategoryResponse.from(category);
@@ -70,6 +81,9 @@ public class CategoryService {
         category.delete();
     }
 
+
+
+    //특정 카테고리 조회(카테고리ID)
     private Category findActiveCategory(Long categoryId) {
         return categoryRepository.findByCategoryIdAndIsDeletedFalse(categoryId)
                 .orElseThrow(CategoryNotFoundException::new);

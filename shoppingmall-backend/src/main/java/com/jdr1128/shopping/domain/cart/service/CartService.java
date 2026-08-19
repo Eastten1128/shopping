@@ -7,15 +7,17 @@ import com.jdr1128.shopping.domain.cart.dto.CartResponse;
 import com.jdr1128.shopping.domain.cart.entity.Cart;
 import com.jdr1128.shopping.domain.cart.entity.CartItem;
 import com.jdr1128.shopping.domain.cart.exception.CartItemNotFoundException;
-import com.jdr1128.shopping.domain.cart.exception.ProductNotAvailableException;
 import com.jdr1128.shopping.domain.cart.repository.CartItemRepository;
 import com.jdr1128.shopping.domain.cart.repository.CartRepository;
 import com.jdr1128.shopping.domain.member.entity.Member;
+import com.jdr1128.shopping.domain.member.exception.MemberNotFoundException;
 import com.jdr1128.shopping.domain.member.repository.MemberRepository;
 import com.jdr1128.shopping.domain.product.entity.Product;
 import com.jdr1128.shopping.domain.product.entity.ProductStatus;
+import com.jdr1128.shopping.domain.product.expection.ProductNotAvailableException;
 import com.jdr1128.shopping.domain.product.expection.ProductNotFoundException;
 import com.jdr1128.shopping.domain.product.repository.ProductRepository;
+import com.jdr1128.shopping.global.exception.BusinessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -137,7 +139,8 @@ public class CartService {
         return cartRepository.findByMember_MemberId(memberId)
                 .orElseGet(() -> {
                     Member member = memberRepository.findById(memberId)
-                            .orElseThrow(()->new IllegalArgumentException("회원을 찾을 수 없습니다."));
+                            //.orElseThrow(()->new IllegalArgumentException("회원을 찾을 수 없습니다."));
+                            .orElseThrow(MemberNotFoundException::new);
 
                     Cart cart = new Cart(member);
 

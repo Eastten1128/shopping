@@ -1,7 +1,11 @@
 package com.jdr1128.shopping.domain.member.exception;
 
-public class DuplicateEmailException extends RuntimeException {
+import com.jdr1128.shopping.global.exception.BusinessException;
+import com.jdr1128.shopping.global.exception.ErrorCode;
+
+public class DuplicateEmailException extends BusinessException {
     public DuplicateEmailException() {
-        super("이미 사용 중인 이메일입니다.");
+        //super("이미 사용 중인 이메일입니다.");
+        super(ErrorCode.DUPLICATE_EMAIL);
     }
 }

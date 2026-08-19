@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 
 
+@Getter
 public class MemberSignupRequest {
 
     @NotBlank(message = "로그인 ID는 필수입니다.")
@@ -23,15 +24,4 @@ public class MemberSignupRequest {
     public MemberSignupRequest() {
     }
 
-    public String getLoginId() {
-        return loginId;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public String getEmail() {
-        return email;
-    }
 }

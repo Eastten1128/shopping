@@ -1,11 +1,14 @@
 package com.jdr1128.shopping.domain.cart.exception;
 
+import com.jdr1128.shopping.global.exception.BusinessException;
+import com.jdr1128.shopping.global.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-@ResponseStatus(HttpStatus.NOT_FOUND)
-public class CartItemNotFoundException extends RuntimeException{
+//@ResponseStatus(HttpStatus.NOT_FOUND)
+public class CartItemNotFoundException extends BusinessException {
     public CartItemNotFoundException(){
-        super("장바구니 상품을 찾을 수 없습니다.");
+        //super("장바구니 상품을 찾을 수 없습니다.");
+        super(ErrorCode.CART_ITEM_NOT_FOUND);
     }
 }

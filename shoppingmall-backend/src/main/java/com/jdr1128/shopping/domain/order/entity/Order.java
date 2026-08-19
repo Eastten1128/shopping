@@ -83,4 +83,11 @@ public class Order {
     public void cancel(){
         this.orderStatus = OrderStatus.CANCELLED;
     }
+
+    //결제 상태 변경 메서드
+    public void pay() { this.orderStatus = OrderStatus.PAID;}
+    public void fail() {this.orderStatus = OrderStatus.FAILED;}
+    //결제 상태 체크 메서드
+    public boolean isPaid() {return this.orderStatus == OrderStatus.PAID;}
+    public boolean isCanceled() {return this.orderStatus == OrderStatus.CANCELLED;}
 }

@@ -3,6 +3,7 @@ package com.jdr1128.shopping.domain.product.dto;
 
 import com.jdr1128.shopping.domain.product.entity.ProductStatus;
 import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
 
 public class ProductCreateRequest {
 
@@ -19,10 +20,10 @@ public class ProductCreateRequest {
     private String productName;
 
     @NotNull(message = "상품 가격은 필수입니다.")
-    private int price;
+    private Integer price;
 
     @NotNull(message = "상품 재고수는 필수입니다.")
-    private int stock;
+    private Integer stock;
 
     @NotNull(message = "상품 상태는 필수입니다.")
     private ProductStatus productStatus;

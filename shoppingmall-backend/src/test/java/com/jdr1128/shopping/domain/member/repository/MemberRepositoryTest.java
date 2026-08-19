@@ -12,7 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-@ActiveProfiles
+@ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 public class MemberRepositoryTest {
 
@@ -21,65 +21,73 @@ public class MemberRepositoryTest {
 
     @Test
     @DisplayName("회원을 저장하고 ID로 조회할 수 있다.")
-    void saveAndFindMemberById() {
+    void saveAndFindMemberById(){
         //given
+
         Member member = new Member(
-                "user01",
-                "encoded-password",
-                "user01@test.com",
+                "user99",
+                "password",
+                "user99@test.com",
                 Role.USER
         );
+
         Member savedMember = memberRepository.save(member);
         //when
-        Member foundMember = memberRepository.findById(savedMember.getMemberId())
-                .orElseThrow();
 
+        Member foundMember = memberRepository.findById(savedMember.getMemberId())
+                        .orElseThrow();
         //then
-        assertThat(foundMember.getLoginId()).isEqualTo("user01");
-        assertThat(foundMember.getEmail()).isEqualTo("user01@test.com");
+        assertThat(foundMember.getLoginId()).isEqualTo("user99");
+        assertThat(foundMember.getEmail()).isEqualTo("user99@test.com");
         assertThat(foundMember.getRole()).isEqualTo(Role.USER);
     }
 
     @Test
-    @DisplayName("loginId로 회원을 조회할 수 있다.")
+    @DisplayName("loginId로 회원을 조회할 수 있다")
     void findByLoginId(){
         //given
+
+        String sellerLoginId = "seller99";
         Member member = new Member(
-                "seller01",
+                sellerLoginId,
                 "encoded-password",
-                "seller01@test.com",
+                "seller99@test.com",
                 Role.SELLER
         );
 
-        memberRepository.save(member);
+        Member savedMember = memberRepository.save(member);
 
         //when
-        Member foundMember = memberRepository.findByLoginId("seller01")
+        Member foundMember = memberRepository.findByLoginId(sellerLoginId)
                 .orElseThrow();
 
-        //Then
-        assertThat(foundMember.getLoginId()).isEqualTo("seller01");
-        assertThat(foundMember.getEmail()).isEqualTo("seller01@test.com");
+        //then
+        assertThat(foundMember.getLoginId()).isEqualTo("seller99");
+        assertThat(foundMember.getRole()).isEqualTo(Role.SELLER);
     }
 
     @Test
     @DisplayName("email 중복 여부를 확인할 수 있다.")
     void existsByEmail(){
         //given
-
-        Member member = new Member(
-                "admin01",
-                "encoded-password",
-                "admin01@test.com",
-                Role.ADMIN
+        Member member1 = new Member(
+                "user99",
+                "password",
+                "user99@test.com",
+                Role.USER
         );
 
-        memberRepository.save(member);
+        Member savedMember1 = memberRepository.save(member1);
 
         //when
-        boolean exists = memberRepository.existsByEmail("admin01@test.com");
+        boolean exists = memberRepository.existsByEmail("user99@test.com");
 
         //then
+
         assertThat(exists).isTrue();
+
+
     }
+
+
 }

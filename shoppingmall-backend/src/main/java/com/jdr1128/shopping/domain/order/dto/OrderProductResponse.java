@@ -26,7 +26,7 @@ public class OrderProductResponse {
         this.productName = productName;
         this.amount = amount;
         this.price = price;
-        this.orderPrice = orderPrice;
+        this.orderPrice = price * amount;
     }
 
     public static OrderProductResponse from(OrderProduct orderProduct){
