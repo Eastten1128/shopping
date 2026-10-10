@@ -1,4 +1,4 @@
-import { Link, Route, Routes } from 'react-router';
+import { Link, Route, Routes, useNavigate } from 'react-router';
 import { useState } from 'react';
 import { logout } from './api/memberApi';
 import ProtectedRoute from './auth/ProtectedRoute';
@@ -10,9 +10,11 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import ProductListPage from './pages/ProductListPage';
 import ProductDetailPage from './pages/ProductDetailPage';
+import CartPage from './pages/CartPage';
 
 // App 컴포넌트는 React의 함수형 컴포넌트로, 쇼핑몰 애플리케이션의 메인 화면을 렌더링한다.
 function App() {
+  const navigate = useNavigate();
   const { isInitializing, isAuthenticated, user } = useAuth();
   const [logoutError, setLogoutError] = useState('');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -42,6 +44,8 @@ function App() {
         {" | "}
         <Link to="/products">상품</Link>
         {" | "}
+        <button type="button" onClick={() => navigate('/cart')}>장바구니</button>
+        {" | "}
         {isAuthenticated ? <>
           <span>{user?.loginId}님</span>{" | "}
           <Link to="/account">내 인증 정보</Link>{" | "}
@@ -57,6 +61,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/account" element={<HomePage />} />
+          <Route path="/cart" element={<CartPage />} />
         </Route>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
