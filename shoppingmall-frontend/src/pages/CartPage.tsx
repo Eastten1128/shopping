@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import axios from 'axios';
 
 import { getMyCart } from '../api/cartApi';
 import type { CartResponse } from '../types/cart';
 
 function CartPage() {
+    const navigate = useNavigate();
     const [cart, setCart] = useState<CartResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState('');
@@ -69,6 +70,7 @@ function CartPage() {
                 <p>담을 당시 가격을 기준으로 계산한 금액입니다.</p>
             </section>
             <Link to="/products">쇼핑 계속하기</Link>
+            <button type="button" disabled={cart.items.length === 0} onClick={() => navigate('/orders/new')}>주문하기</button>
         </div>
     );
 }

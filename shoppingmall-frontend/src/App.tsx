@@ -11,6 +11,9 @@ import SignupPage from './pages/SignupPage';
 import ProductListPage from './pages/ProductListPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
+import OrderCreatePage from './pages/OrderCreatePage';
+import OrderListPage from './pages/OrderListPage';
+import OrderDetailPage from './pages/OrderDetailPage';
 
 // App 컴포넌트는 React의 함수형 컴포넌트로, 쇼핑몰 애플리케이션의 메인 화면을 렌더링한다.
 function App() {
@@ -62,6 +65,9 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/account" element={<HomePage />} />
           <Route path="/cart" element={<CartPage />} />
+          <Route path="/orders/new" element={<OrderCreatePage />} />
+          <Route path="/orders" element={<OrderListPage />} />
+          <Route path="/orders/:orderId" element={<OrderDetailPage />} />
         </Route>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />

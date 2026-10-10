@@ -49,5 +49,6 @@ public class OrderProduct {
         this.productName = productName;
         this.amount = amount;
         this.price = price;
+        this.orderPrice = price * amount;
     }
 }
