@@ -2,6 +2,9 @@ import { Link, Route, Routes } from 'react-router';
 import { useState } from 'react';
 import { logout } from './api/memberApi';
 import ProtectedRoute from './auth/ProtectedRoute';
+import SellerRoute from './auth/SellerRoute';
+import SellerProductListPage from './pages/SellerProductListPage';
+import SellerProductFormPage from './pages/SellerProductFormPage';
 
 import { useAuth } from './auth/useAuth';
 //import axiosInstance from './api/axiosInstance';
@@ -45,6 +48,7 @@ function App() {
         {isAuthenticated ? <>
           <span>{user?.loginId}님</span>{" | "}
           <Link to="/account">내 인증 정보</Link>{" | "}
+          {user?.role === 'SELLER' && <><Link to="/seller/products">내 판매상품</Link>{" | "}<Link to="/seller/products/new">상품 등록</Link>{" | "}</>}
           <button onClick={() => void handleLogout()} disabled={isLoggingOut}>로그아웃</button>
         </> : <>
           <Link to="/login">로그인</Link>{" | "}
@@ -57,6 +61,11 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/account" element={<HomePage />} />
+          <Route element={<SellerRoute />}>
+            <Route path="/seller/products" element={<SellerProductListPage />} />
+            <Route path="/seller/products/new" element={<SellerProductFormPage />} />
+            <Route path="/seller/products/:productId/edit" element={<SellerProductFormPage />} />
+          </Route>
         </Route>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />

@@ -20,4 +20,8 @@ public interface ProductRepository extends JpaRepository<Product,Long> {
     //상품 = SellerId = sellerId & 삭제 = false
     List<Product> findBySeller_MemberIdAndIsDeletedFalse(Long sellerId);
 
+    List<Product> findBySeller_MemberId(Long sellerId);
+
+    Optional<Product> findByProductIdAndSeller_MemberId(Long productId, Long sellerId);
+
 }
