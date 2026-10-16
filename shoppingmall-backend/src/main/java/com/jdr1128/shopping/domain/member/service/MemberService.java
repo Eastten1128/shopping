@@ -1,7 +1,9 @@
 package com.jdr1128.shopping.domain.member.service;
 
+import com.jdr1128.shopping.domain.auth.service.RefreshTokenService;
 import com.jdr1128.shopping.domain.member.dto.LoginRequest;
 import com.jdr1128.shopping.domain.member.dto.LoginResponse;
+import com.jdr1128.shopping.domain.member.dto.LoginResult;
 import com.jdr1128.shopping.domain.member.dto.MemberResponse;
 import com.jdr1128.shopping.domain.member.dto.MemberSignupRequest;
 import com.jdr1128.shopping.domain.member.entity.Member;
@@ -25,14 +27,17 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
     //jwt
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
     public MemberService(MemberRepository memberRepository,
                          PasswordEncoder passwordEncoder,
-                         JwtTokenProvider jwtTokenProvider
+                         JwtTokenProvider jwtTokenProvider,
+                         RefreshTokenService refreshTokenService
     ) {
         this.memberRepository = memberRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.refreshTokenService = refreshTokenService;
     }
 
     //회원 가입
@@ -55,7 +60,7 @@ public class MemberService {
     }
 
     //로그인
-    public LoginResponse login(LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         Member member = memberRepository.findByLoginIdAndIsDeletedFalse(request.getLoginId())
                 .orElseThrow(LoginFailedException::new);
 
@@ -64,16 +69,34 @@ public class MemberService {
         }
 
         String accessToken = jwtTokenProvider.createAccessToken(
+                member.getMemberId(),
                 member.getLoginId(),
                 member.getRole()
         );
 
-        return LoginResponse.of(
+        //RefreshToken 기반 재발급
+        String refreshToken = refreshTokenService.issueRefreshToken(member);
+
+        LoginResponse loginResponse =  LoginResponse.of(
                 accessToken,
                 member.getMemberId(),
                 member.getLoginId(),
                 member.getRole()
         );
+
+        return new LoginResult(loginResponse, refreshToken);
+    }
+
+    //AccessToken 재발급
+    @Transactional
+    public LoginResult refresh(String refreshToken){
+        return refreshTokenService.rotateRefreshToken(refreshToken);
+    }
+
+    //로그아웃
+    @Transactional
+    public void logout(String refreshToken){
+        refreshTokenService.logout(refreshToken);
     }
 
 

@@ -33,8 +33,8 @@ public class JwtTokenProvider {
     //생성자 설정값 주입
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.access-token-expiration-milliseconds}") long accessTokenExpirationMilliseconds,
-            @Value("${jwt.refresh-token-expiration-milliseconds}") long refreshTokenExpirationMilliseconds
+            @Value("${jwt.access-token-expiration-milliseconds:${jwt.expiration-milliseconds:1800000}}") long accessTokenExpirationMilliseconds,
+            @Value("${jwt.refresh-token-expiration-milliseconds:604800000}") long refreshTokenExpirationMilliseconds
     ) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTokenExpirationMilliseconds = accessTokenExpirationMilliseconds;

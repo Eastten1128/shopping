@@ -11,6 +11,7 @@ import com.jdr1128.shopping.domain.product.dto.ProductCreateRequest;
 import com.jdr1128.shopping.domain.product.dto.ProductResponse;
 import com.jdr1128.shopping.domain.product.dto.ProductUpdateRequest;
 import com.jdr1128.shopping.domain.product.entity.Product;
+import com.jdr1128.shopping.domain.product.entity.ProductStatus;
 import com.jdr1128.shopping.domain.product.expection.ProductAccessDeniedException;
 import com.jdr1128.shopping.domain.product.expection.ProductNotFoundException;
 import com.jdr1128.shopping.domain.product.repository.ProductRepository;
@@ -72,9 +73,55 @@ public class ProductService {
 
 
     //전체 상품 찾기
-    public List<ProductResponse> getProducts(){
-        return productRepository.findByIsDeletedFalse()
-                .stream()
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getSellerProducts(Long sellerId, Role role, boolean includeStopped) {
+        validateSeller(role);
+        List<Product> products = includeStopped
+                ? productRepository.findBySeller_MemberId(sellerId)
+                : productRepository.findBySeller_MemberIdAndIsDeletedFalse(sellerId);
+        return products.stream().map(ProductResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ProductResponse getSellerProduct(Long productId, Long sellerId, Role role) {
+        return ProductResponse.from(findSellerProduct(productId, sellerId, role));
+    }
+
+    @Transactional
+    public ProductResponse updateSellerProduct(Long productId, ProductUpdateRequest request, Long sellerId, Role role) {
+        Product product = findSellerProduct(productId, sellerId, role);
+        Category category = categoryRepository.findByCategoryIdAndIsDeletedFalse(request.getCategoryId())
+                .orElseThrow(CategoryNotFoundException::new);
+        // 판매중지는 DELETE로만 처리하고, 중지된 상품을 수정해도 판매를 재개하지 않는다.
+        if (!product.isDeleted() && request.getProductStatus() == ProductStatus.STOPPED) {
+            throw new ProductAccessDeniedException();
+        }
+        product.updateProduct(category, request.getProductName(), request.getPrice(), request.getStock(),
+                product.isDeleted() ? ProductStatus.STOPPED : request.getProductStatus());
+        return ProductResponse.from(product);
+    }
+
+    private Product findSellerProduct(Long productId, Long sellerId, Role role) {
+        validateSeller(role);
+        return productRepository.findByProductIdAndSeller_MemberId(productId, sellerId)
+                .orElseThrow(ProductNotFoundException::new);
+    }
+
+    private void validateSeller(Role role) {
+        if (role != Role.SELLER) {
+            throw new ProductAccessDeniedException();
+        }
+    }
+
+    public List<ProductResponse> getProducts(Long categoryId){
+
+        List<Product> products;
+        if (categoryId == null){
+            products = productRepository.findByIsDeletedFalse();
+        } else {
+            products = productRepository.findByCategory_CategoryIdAndIsDeletedFalse(categoryId);
+        }
+        return products.stream()
                 .map(ProductResponse::from)
                 .toList();
     }
@@ -112,6 +159,7 @@ public class ProductService {
         return ProductResponse.from(product);
     }
 
+
     //상품 삭제
     @Transactional
     public void deleteProduct(
@@ -139,7 +187,7 @@ public class ProductService {
             Product product,
             Long loginMemberId,
             Role loginMemberRole
-    ) { //ADMIN
+    ) { //ADMIN 일 시 return
         if(loginMemberRole == Role.ADMIN){
             return;
         }

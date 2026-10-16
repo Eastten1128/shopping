@@ -1,7 +1,10 @@
-import { Link, Route, Routes, useNavigate } from 'react-router';
+import { Link, Navigate, Route, Routes, useNavigate } from 'react-router';
 import { useState } from 'react';
 import { logout } from './api/memberApi';
 import ProtectedRoute from './auth/ProtectedRoute';
+import AdminRoute from './auth/AdminRoute';
+import AdminLayout from './pages/AdminLayout';
+import AdminCategoryPage from './pages/AdminCategoryPage';
 
 import { useAuth } from './auth/useAuth';
 //import axiosInstance from './api/axiosInstance';
@@ -52,6 +55,7 @@ function App() {
         {isAuthenticated ? <>
           <span>{user?.loginId}님</span>{" | "}
           <Link to="/account">내 인증 정보</Link>{" | "}
+          {user?.role === 'ADMIN' && <><Link to="/admin/categories">관리자 페이지</Link>{" | "}</>}
           <button onClick={() => void handleLogout()} disabled={isLoggingOut}>로그아웃</button>
         </> : <>
           <Link to="/login">로그인</Link>{" | "}
@@ -64,6 +68,12 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/account" element={<HomePage />} />
+          <Route element={<AdminRoute />}>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="categories" replace />} />
+              <Route path="categories" element={<AdminCategoryPage />} />
+            </Route>
+          </Route>
           <Route path="/cart" element={<CartPage />} />
           <Route path="/orders/new" element={<OrderCreatePage />} />
           <Route path="/orders" element={<OrderListPage />} />

@@ -1,7 +1,11 @@
-package com.jdr1128.shopping.domain.auth;
+package com.jdr1128.shopping.domain.auth.exception;
 
-public class RefreshTokenNotFoundException extends RuntimeException {
-  public RefreshTokenNotFoundException(String message) {
-    super(message);
-  }
+import com.jdr1128.shopping.global.exception.BusinessException;
+import com.jdr1128.shopping.global.exception.ErrorCode;
+
+public class RefreshTokenNotFoundException extends BusinessException {
+
+    public RefreshTokenNotFoundException() {
+        super(ErrorCode.REFRESH_TOKEN_NOT_FOUND);
+    }
 }

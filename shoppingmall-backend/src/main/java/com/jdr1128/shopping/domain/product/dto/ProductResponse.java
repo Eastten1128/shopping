@@ -15,6 +15,7 @@ public class ProductResponse {
     private int price;
     private int stock;
     private ProductStatus productStatus;
+    private boolean deleted;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -42,18 +43,24 @@ public class ProductResponse {
     }
 
     public static ProductResponse from(Product product){
-        return new ProductResponse(
+        ProductResponse response = new ProductResponse(
                 product.getProductId(),
                 product.getCategory().getCategoryId(),
                 product.getSeller().getMemberId(),
-                product.getSeller().getLoginId(),
                 product.getProductName(),
+                product.getSeller().getLoginId(),
                 product.getPrice(),
                 product.getStock(),
                 product.getProductStatus(),
                 product.getCreatedAt(),
                 product.getUpdateAt()
         );
+        response.deleted = product.isDeleted();
+        return response;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
     }
 
     public Long getProductId() {

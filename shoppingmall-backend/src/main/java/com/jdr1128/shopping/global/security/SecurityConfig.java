@@ -64,7 +64,11 @@ public class SecurityConfig {
                         //회원
                         .requestMatchers(HttpMethod.POST,"/api/members/signup").permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/members/login").permitAll()
+                        .requestMatchers(HttpMethod.POST,"/api/members/refresh").permitAll()
+                        .requestMatchers(HttpMethod.POST,"/api/members/logout").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/members/me").authenticated()
+
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         //카테고리 조회 - 모두 허용
                         .requestMatchers(HttpMethod.GET,"/api/categories").permitAll()

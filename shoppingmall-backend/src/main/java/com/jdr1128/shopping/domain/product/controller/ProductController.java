@@ -39,8 +39,10 @@ public class ProductController {
 
     //모든 상품 검색
     @GetMapping
-    public ResponseEntity<List<ProductResponse>> getAllProducts(){
-        List<ProductResponse> responses = productService.getProducts();
+    public ResponseEntity<List<ProductResponse>> getAllProducts(
+            @RequestParam(required = false) Long categoryId
+    ){
+        List<ProductResponse> responses = productService.getProducts(categoryId);
 
         return ResponseEntity.ok(responses);
     }
