@@ -8,6 +8,7 @@ public class CategoryResponse {
 
     private Long categoryId;
     private String categoryName;
+    private boolean deleted;
     private LocalDateTime createAt;
     private LocalDateTime updateAt;
 
@@ -23,12 +24,18 @@ public class CategoryResponse {
     }
 
     public static CategoryResponse from(Category category){
-        return new CategoryResponse(
+        CategoryResponse response = new CategoryResponse(
                 category.getCategoryId(),
                 category.getCategoryName(),
                 category.getCreatedAt(),
                 category.getUpdateAt()
         );
+        response.deleted = category.isDeleted();
+        return response;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
     }
 
     public Long getCategoryId() {

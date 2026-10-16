@@ -50,6 +50,25 @@ public class CategoryService {
     }
 
     //카테고리 조회
+    public List<CategoryResponse> getAdminCategories(boolean includeDeleted) {
+        List<Category> categories = includeDeleted
+                ? categoryRepository.findAll() : categoryRepository.findByIsDeletedFalse();
+        return categories.stream().map(CategoryResponse::from).toList();
+    }
+
+    @Transactional
+    public CategoryResponse updateAdminCategory(Long categoryId, CategoryRequest request) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(CategoryNotFoundException::new);
+        if (!category.getCategoryName().equals(request.getCategoryName())
+                && categoryRepository.existsByCategoryName(request.getCategoryName())) {
+            throw new DuplicateCategoryNameException();
+        }
+        // 삭제 상태와 삭제 시각을 유지하면서 이름만 변경한다.
+        category.updateCategoryName(request.getCategoryName());
+        return CategoryResponse.from(category);
+    }
+
     public CategoryResponse getCategory(Long categoryId) {
 
         Category category = findActiveCategory(categoryId);

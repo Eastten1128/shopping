@@ -81,6 +81,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/api/members/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/members/logout").permitAll()
 
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
                         //카테고리 조회 - 모두 허용
                         .requestMatchers(HttpMethod.GET,"/api/categories").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/categories/**").permitAll()
