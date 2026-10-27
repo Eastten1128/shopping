@@ -46,8 +46,10 @@ public class MemberService {
         validateDuplicateLoginId(request.getLoginId());
         validateDuplicateEmail(request.getEmail());
 
+        //패스워드 인코딩
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
+        //인코딩한 패스워드로 Member 객체 생성
         Member member = new Member(
                 request.getLoginId(),
                 encodedPassword,

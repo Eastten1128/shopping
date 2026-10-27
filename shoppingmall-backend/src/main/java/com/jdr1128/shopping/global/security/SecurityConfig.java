@@ -1,6 +1,7 @@
 package com.jdr1128.shopping.global.security;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -12,6 +13,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -20,6 +26,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHanlder customAccessDeniedHanlder;
+    @Value("${app.frontend-origin}") String frontendOrigin;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -31,15 +38,21 @@ public class SecurityConfig {
 
     }
 
+    //특정 HTTP 요청에 대한 웹 기반 보안 구성
+    //시큐리티 대부분의 설정을 담당
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            CorsConfigurationSource corsConfigurationSource
+    ) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception
                         /*.authenticationEntryPoint((request, response, authException) ->
                                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
@@ -67,7 +80,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,"/api/members/refresh").permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/members/logout").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/members/me").authenticated()
-
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         //카테고리 조회 - 모두 허용
@@ -103,6 +115,29 @@ public class SecurityConfig {
         return http.build();
     }
 
+    @Bean
+    //CORS 설정
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        //프론트엔드 개발 주소만 허용
+        configuration.setAllowedOrigins(List.of(frontendOrigin));
+        //프론트엔드가 사용할 HTTP 메서드 허용
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        //프론트엔드가 보낼 수 있는 요청 헤더
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        //브라우저가 Cookie를 포함한 요청을 허용
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
+    }
+
+    //security 암호화
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

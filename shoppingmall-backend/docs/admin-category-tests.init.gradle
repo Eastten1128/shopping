@@ -1,0 +1,8 @@
+// 기존 MemberServiceTest의 인증 DTO 컴파일 문제와 분리해 카테고리 테스트를 실행한다.
+allprojects {
+    afterEvaluate {
+        if (plugins.hasPlugin('java')) {
+            sourceSets.test.java.setIncludes(['**/domain/category/controller/AdminCategoryIntegrationTest.java', '**/domain/category/service/CategoryServiceTest.java'])
+        }
+    }
+}

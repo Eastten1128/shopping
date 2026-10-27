@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class JwtTokenProviderTest {
 
     private final JwtTokenProvider jwtTokenProvider = new JwtTokenProvider(
-            "REMOVED_JWT_SECRET",
+            "test-only-jwt-provider-fixture-secret-at-least-48-bytes-long",
             1800000L,
             604800000L
     );
