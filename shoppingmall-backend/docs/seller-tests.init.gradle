@@ -1,0 +1,8 @@
+// 기존 MemberServiceTest의 인증 DTO 불일치와 별개로 상품 서비스 테스트를 검증한다.
+allprojects {
+    afterEvaluate {
+        if (plugins.hasPlugin('java')) {
+            sourceSets.test.java.setIncludes(['**/domain/product/service/*Test.java', '**/domain/product/repository/SellerProductRepositoryTest.java'])
+        }
+    }
+}

@@ -1,0 +1,20 @@
+.admin-layout { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; padding: 24px; text-align: left; }
+.admin-sidebar { border-right: 1px solid var(--border); padding-right: 16px; }
+.admin-sidebar nav { display: flex; flex-direction: column; gap: 12px; }
+.admin-sidebar a { padding: 12px; border-radius: 6px; }
+.admin-sidebar a[aria-current="page"] { background: var(--accent-bg); color: var(--accent); }
+.admin-content { min-width: 0; }
+.admin-toolbar { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+.admin-category-list { list-style: none; padding: 0; }
+.admin-category-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; min-height: 64px; padding: 12px; border-bottom: 1px solid var(--border); }
+.admin-category-name { overflow-wrap: anywhere; }
+.admin-category-actions { display: flex; gap: 8px; }
+.admin-editor { border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin: 16px 0; }
+.admin-editor input { box-sizing: border-box; max-width: 100%; }
+.admin-editor-actions { display: flex; gap: 8px; margin-top: 12px; }
+.admin-delete-dialog { max-width: min(480px, 85vw); }
+@media (max-width: 640px) {
+    .admin-layout { grid-template-columns: 1fr; padding: 16px; }
+    .admin-sidebar { border-right: 0; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    .admin-category-row { gap: 8px; padding: 8px; }
+}

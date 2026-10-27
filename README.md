@@ -1,6 +1,12 @@
 # 쇼핑몰 프로젝트
 
-> 본 문서는 기존 쇼핑몰 프로젝트 기획 내용을 기반으로, 구현 전 확인사항을 설계에 반영한 GitHub `README.md` 문서입니다.  
+## 로컬 환경 설정
+
+저장소 루트의 `.env.example`을 `.env`로 복사하고 DB 연결 정보와 충분히 긴 무작위 `JWT_SECRET`을 입력한다. `.env`는 Git에서 제외하며 실제 값은 공유하지 않는다. 기존 로컬 설정은 이번 작업에서 `.env`로 이동했다.
+
+Spring Boot는 루트 또는 `shoppingmall-backend`에서 실행할 때 `.env`를 자동으로 읽는다. 테스트는 로컬 DB 대신 H2와 공개 테스트용 키를 사용하므로 `.env` 없이도 실행할 수 있다. 자세한 실행·검증 방법과 병합 정책은 [환경 설정 및 병합 기록](docs/environment-and-merge.md)을 참고한다.
+
+> 본 문서는 기존 쇼핑몰 프로젝트 기획 내용을 기반으로, 구현 전 확인사항을 설계에 반영한 GitHub `README.md` 문서입니다.
 > 첨부 ERD 이미지는 **초기 ERD 기준**으로 포함하며, 실제 구현에서는 아래의 **반영된 설계 변경사항**을 적용합니다.
 
 ---
@@ -93,7 +99,7 @@ Java 코드에서는 카멜 케이스를 사용하고, DB 테이블 및 컬럼�
 
 ![쇼핑몰 ERD](./docs/images/shopping-erd-original.png)
 
-> 위 ERD 이미지는 초기 설계 기준입니다.  
+> 위 ERD 이미지는 초기 설계 기준입니다.
 > 실제 구현에서는 아래의 수정된 테이블 구조를 기준으로 진행합니다.
 
 ---
@@ -163,7 +169,7 @@ USER, SELLER, ADMIN
 SELLING, SOLD_OUT, STOPPED
 ```
 
-> 기존 `seller` 문자열 컬럼 대신 `sellerId`를 사용합니다.  
+> 기존 `seller` 문자열 컬럼 대신 `sellerId`를 사용합니다.
 > 이를 통해 판매자 본인 상품 여부를 검증할 수 있습니다.
 
 ---
@@ -217,14 +223,14 @@ SELLING, SOLD_OUT, STOPPED
 UNIQUE (cart_id, product_id)
 ```
 
-> `cartPrice`는 장바구니에 상품을 담은 시점의 가격입니다.  
+> `cartPrice`는 장바구니에 상품을 담은 시점의 가격입니다.
 > 주문 생성 시 현재 `Product.price`와 비교하여 가격 변경 여부를 검증합니다.
 
 ---
 
 ### Order
 
-Java 엔티티명: `Order`  
+Java 엔티티명: `Order`
 실제 테이블명: `orders`
 
 | 논리명 | Java 필드명 | DB 컬럼명 | 제약조건 | 타입 |
@@ -263,7 +269,7 @@ ORDERED, PAID, CANCELLED, FAILED
 | 상품가격 | `price` | `price` | NOT NULL | INT |
 | 주문상품금액 | `orderPrice` | `order_price` | NOT NULL | INT |
 
-> `productName`, `price`, `orderPrice`는 주문 시점의 상품 정보를 저장하는 스냅샷입니다.  
+> `productName`, `price`, `orderPrice`는 주문 시점의 상품 정보를 저장하는 스냅샷입니다.
 > 상품명이 변경되거나 가격이 변경되어도 과거 주문 내역은 유지됩니다.
 
 ---
@@ -288,14 +294,14 @@ ORDERED, PAID, CANCELLED, FAILED
 READY, COMPLETE, FAILED, CANCELLED
 ```
 
-> 실제 결제 시스템에서는 카드번호 전체를 저장하면 안 됩니다.  
+> 실제 결제 시스템에서는 카드번호 전체를 저장하면 안 됩니다.
 > 개인 프로젝트에서는 모의 결제 기준으로 사용하되, 실제 서비스 구조에서는 카드번호 마스킹 또는 결제사 거래키만 저장하는 방향이 안전합니다.
 
 ---
 
 ## 2차 기능 확장 테이블
 
-리뷰와 대댓글 기능은 기존 권한표에 포함되어 있으나 초기 ERD에는 존재하지 않습니다.  
+리뷰와 대댓글 기능은 기존 권한표에 포함되어 있으나 초기 ERD에는 존재하지 않습니다.
 따라서 1차 MVP에서는 제외하고, 2차 기능으로 구현하는 것을 권장합니다.
 
 ### Review
@@ -570,6 +576,7 @@ GET /api/products?status=SELLING&page=0&size=20
 1. 프로젝트 생성 및 기본 패키지 구조 구성
 2. `Member`, `Category`, `Product` 엔티티 작성
 3. 회원가입, 로그인, JWT 인증 구현
+* Refresh Token 인증 구현
 4. 권한 구분: `USER`, `SELLER`, `ADMIN`
 5. 카테고리 CRUD
 6. 상품 CRUD
@@ -581,6 +588,25 @@ GET /api/products?status=SELLING&page=0&size=20
 12. 결제 정보 저장 및 모의 결제 처리
 13. 주문 취소
 14. JUnit 5, Mockito 기반 테스트 작성
+
+### 1차 MVP - 프론트엔드 작업 단계
+1. 프론트엔드 프로젝트 구조 점검
+2. Axios 인스턴스 생성
+3. Router 구조 생성
+4. 회원가입 페이지
+5. 로그인 페이지
+6. JWT 저장 및 로그아웃 처리
+* Refresh Token 저장 및 처리
+7. 상품 목록 페이지
+8. 상품 상세 페이지
+9. 카테고리 목록 연동
+10. 장바구니 페이지
+11. 주문 생성 페이지
+12. 결제 페이지
+13. 마이페이지 / 주문 내역 (완)
+14. SELLER 상품 등록 페이지
+15. ADMIN 카테고리 관리 페이지
+16. 에러 처리 및 UI 정리
 
 ### 2차 확장
 
@@ -621,4 +647,3 @@ GET /api/products?status=SELLING&page=0&size=20
 - `OrderProduct`에는 주문 시점 상품명과 가격을 반드시 스냅샷으로 저장합니다.
 - Redis는 장바구니 원본 저장소가 아니라 캐시로 사용합니다.
 - 리뷰와 대댓글은 1차 MVP에 포함하지 않고 2차 기능으로 분리합니다.
-
