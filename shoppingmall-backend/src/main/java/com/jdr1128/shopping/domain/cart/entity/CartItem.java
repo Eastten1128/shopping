@@ -11,7 +11,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter
-@Table(name = "cart_items")
+@Table(name = "cart_items"
+)
 @EntityListeners(AuditingEntityListener.class)
 public class CartItem {
 

@@ -221,6 +221,7 @@ class PaymentServiceTest {
         verifyNoInteractions(orderProductRepository);
     }
 
+    //내 주문을 찾는다.
     private void givenMyOrder() {
         when(orderRepository.findByOrderIdAndMember_MemberId(ORDER_ID, MEMBER_ID))
                 .thenReturn(Optional.of(order));

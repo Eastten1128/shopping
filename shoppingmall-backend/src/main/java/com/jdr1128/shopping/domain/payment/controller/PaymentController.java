@@ -21,6 +21,7 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
+    //주문 생성
     @PostMapping("/api/orders/{orderId}/payments")
     public ResponseEntity<PaymentResponse> payOrder(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -38,6 +39,7 @@ public class PaymentController {
                 .body(response);
     }
 
+    //결제 조회
     @GetMapping("/api/payments/{payId}")
     public ResponseEntity<PaymentResponse> getPayment(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -51,6 +53,7 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
+    //결제 취소
     @PatchMapping("/api/payments/{payId}/cancel")
     public ResponseEntity<PaymentResponse> cancelPayment(
             @AuthenticationPrincipal CustomUserDetails userDetails,

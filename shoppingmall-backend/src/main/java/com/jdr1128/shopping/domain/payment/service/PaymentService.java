@@ -3,6 +3,7 @@ package com.jdr1128.shopping.domain.payment.service;
 import com.jdr1128.shopping.domain.member.entity.Member;
 import com.jdr1128.shopping.domain.order.entity.Order;
 import com.jdr1128.shopping.domain.order.entity.OrderProduct;
+import com.jdr1128.shopping.domain.order.entity.OrderStatus;
 import com.jdr1128.shopping.domain.order.repository.OrderProductRepository;
 import com.jdr1128.shopping.domain.order.repository.OrderRepository;
 import com.jdr1128.shopping.domain.payment.dto.PaymentRequest;
@@ -42,11 +43,18 @@ public class PaymentService {
             Long orderId,
             PaymentRequest request
     ) {
+        //주문 가져오기
         Order order = orderRepository.findByOrderIdAndMember_MemberId(orderId, memberId)
                 .orElseThrow(PaymentNotFoundException::new);
 
+        //주문의 Status == 결제완료 or 이미 그 주문의 결제내역이 존재하면 Exception
         if (order.isPaid() || paymentRepository.existsByOrder_OrderId(orderId)) {
             throw new AlreadyPaidException();
+        }
+
+        // 결제는 ORDERED 상태에서만
+        if (order.getOrderStatus() != OrderStatus.ORDERED) {
+            throw new PaymentCancelException();
         }
 
         Payment payment = new Payment(
@@ -88,20 +96,24 @@ public class PaymentService {
             Long payId
     )
     {
+
+        //Payment 정보 가져오기
         Payment payment = paymentRepository.findByPayIdAndOrder_Member_MemberId(
                 payId,
                 memberId
                 )
                 .orElseThrow(PaymentNotFoundException::new);
 
-        //
+        //결제가 완료되지 않았다면 Exception
         if (!payment.isComplete()) {
             throw new PaymentCancelException();
         }
 
+        //결제 취소
         payment.cancel();
+        //결제 연동된 주문도 취소
         payment.getOrder().cancel();
-
+        //결제했던 주문의 재고 돌려놓기
         restoreStock(payment.getOrder().getOrderId());
 
         return PaymentResponse.from(payment);
