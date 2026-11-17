@@ -34,6 +34,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,55 +65,62 @@ class PaymentServiceTest {
     }
 
     @Test
-    @DisplayName("정상 결제는 주문 금액으로 결제를 저장하고 재고를 다시 차감하지 않는다")
+    @DisplayName("결제 생성 시 결제는 READY, 주문은 ORDERED가 된다.")
     void payOrder_success() {
         givenMyOrder();
         givenSavePayment();
 
-        PaymentResponse response = paymentService.payOrder(MEMBER_ID, ORDER_ID, request(true));
+        PaymentResponse response = paymentService.createPayment(MEMBER_ID, ORDER_ID, request(true));
 
         ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
         verify(paymentRepository).save(captor.capture());
         Payment saved = captor.getValue();
         assertThat(saved.getOrder()).isSameAs(order);
         assertThat(saved.getPayPrice()).isEqualTo(60000);
-        assertThat(saved.getPayStatus()).isEqualTo(PaymentStatus.COMPLETE);
-        assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PAID);
+        assertThat(saved.getPayStatus()).isEqualTo(PaymentStatus.READY);
+        assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.ORDERED);
         assertThat(response.getPayId()).isEqualTo(PAY_ID);
         assertThat(response.getOrderId()).isEqualTo(ORDER_ID);
         assertThat(response.getPayPrice()).isEqualTo(60000);
-        assertThat(response.getPayStatus()).isEqualTo(PaymentStatus.COMPLETE);
-        assertThat(response.getOrderStatus()).isEqualTo(OrderStatus.PAID);
+        assertThat(response.getPayStatus()).isEqualTo(PaymentStatus.READY);
+        assertThat(response.getOrderStatus()).isEqualTo(OrderStatus.ORDERED);
         assertThat(product.getStock()).isEqualTo(8);
         verifyNoInteractions(orderProductRepository);
     }
 
     @Test
-    @DisplayName("결제 실패는 실패 기록을 저장하고 주문 상태 변경 및 재고 복구를 수행한다")
-    void payOrder_failure() {
-        givenMyOrder();
-        givenSavePayment();
-        when(orderProductRepository.findByOrder_OrderId(ORDER_ID)).thenReturn(orderProducts);
+    @DisplayName(("READY 결제 실패 시 결제와 주문이 FAILED로 변경된다."))
+    void failPayment_readyPayemnt() {
+        //given
+        Long memberId = 1L;
+        Long payId = 100L;
 
-        PaymentResponse response = paymentService.payOrder(MEMBER_ID, ORDER_ID, request(false));
+        //기존 setUp()에서 생성한 order 사용
+        Payment payment = new Payment(
+                order,
+                "테스트 카드",
+                "test-card",
+                order.getTotalOrderPrice()
+        );
 
-        ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
-        verify(paymentRepository).save(captor.capture());
-        assertThat(captor.getValue().getPayStatus()).isEqualTo(PaymentStatus.FAILED);
+        int stockBefore = product.getStock();
+
+        assertThat(payment.getPayStatus()).isEqualTo(PaymentStatus.READY);
+        assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.ORDERED);
+
+        given(paymentRepository.findMyPaymentForUpdate(memberId, payId))
+                .willReturn(Optional.of(payment));
+
+        //when
+        paymentService.failPayment(memberId, payId);
+
+        //then
+        assertThat(payment.getPayStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
-        assertThat(response.getPayStatus()).isEqualTo(PaymentStatus.FAILED);
-        assertThat(response.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
-        assertThat(product.getStock()).isEqualTo(10);
 
-        // 실패한 결제도 기록이 있으므로 재결제와 재고 중복 복구를 차단한다.
-        when(paymentRepository.existsByOrder_OrderId(ORDER_ID)).thenReturn(true);
-        assertThatThrownBy(() -> paymentService.payOrder(MEMBER_ID, ORDER_ID, request(false)))
-                .isInstanceOf(AlreadyPaidException.class);
-        assertThat(product.getStock()).isEqualTo(10);
-        verify(paymentRepository, times(1)).save(any(Payment.class));
-        verify(orderProductRepository, times(1)).findByOrder_OrderId(ORDER_ID);
+        // 주문 생성 시 차감하지 않았으므로 실패 시에도 실재고 변경 없음
+        assertThat(product.getStock()).isEqualTo(stockBefore);
     }
-
     @Test
     @DisplayName("완료된 결제 취소는 주문도 취소하고 재고를 한 번만 복구한다")
     void cancelPayment_successAndRejectRepeatedCancel() {
@@ -141,7 +149,7 @@ class PaymentServiceTest {
         givenMyOrder();
         order.cancel();
 
-        assertThatThrownBy(() -> paymentService.payOrder(MEMBER_ID, ORDER_ID, request(true)))
+        assertThatThrownBy(() -> paymentService.createPayment(MEMBER_ID, ORDER_ID, request(true)))
                 .isInstanceOf(PaymentCancelException.class);
 
         assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
@@ -156,7 +164,7 @@ class PaymentServiceTest {
         givenMyOrder();
         when(paymentRepository.existsByOrder_OrderId(ORDER_ID)).thenReturn(true);
 
-        assertThatThrownBy(() -> paymentService.payOrder(MEMBER_ID, ORDER_ID, request(true)))
+        assertThatThrownBy(() -> paymentService.createPayment(MEMBER_ID, ORDER_ID, request(true)))
                 .isInstanceOf(AlreadyPaidException.class);
 
         assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.ORDERED);
@@ -170,7 +178,7 @@ class PaymentServiceTest {
         givenMyOrder();
         order.pay();
 
-        assertThatThrownBy(() -> paymentService.payOrder(MEMBER_ID, ORDER_ID, request(true)))
+        assertThatThrownBy(() -> paymentService.createPayment(MEMBER_ID, ORDER_ID, request(true)))
                 .isInstanceOf(AlreadyPaidException.class);
 
         assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PAID);
@@ -184,7 +192,7 @@ class PaymentServiceTest {
         when(orderRepository.findByOrderIdAndMember_MemberId(ORDER_ID, MEMBER_ID))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> paymentService.payOrder(MEMBER_ID, ORDER_ID, request(true)))
+        assertThatThrownBy(() -> paymentService.createPayment(MEMBER_ID, ORDER_ID, request(true)))
                 .isInstanceOf(PaymentNotFoundException.class);
 
         verifyNoInteractions(paymentRepository, orderProductRepository);
@@ -239,7 +247,7 @@ class PaymentServiceTest {
         PaymentRequest request = new PaymentRequest();
         ReflectionTestUtils.setField(request, "cardCompany", "test-card");
         ReflectionTestUtils.setField(request, "cardNumber", "****-1234");
-        ReflectionTestUtils.setField(request, "paymentSuccess", success);
+        //ReflectionTestUtils.setField(request, "paymentSuccess", success);
         return request;
     }
 

@@ -55,10 +55,21 @@ public class Payment {
         this.payStatus = PaymentStatus.READY;
     }
 
-    public void complete() { this.payStatus = PaymentStatus.COMPLETE;}
-    public void fail() {this.payStatus = PaymentStatus.FAILED;}
+    public void complete() {
+        //결제 상태가 아닌 경우에는 complete할 수 없음.
+        if(!isReady()){
+            throw new IllegalStateException("결제 대기 상태가 아닙니다.");
+        }
+        this.payStatus = PaymentStatus.COMPLETE;}
+    public void fail() {
+        //결제 상태가 아닌 경우에는 fail할 수 없음.
+        if(!isReady()){
+            throw new IllegalStateException("결제 대기 상태가 아닙니다.");
+        }
+        this.payStatus = PaymentStatus.FAILED;}
     public void cancel() {this.payStatus = PaymentStatus.CANCELLED;}
 
+    public boolean isReady() {return this.payStatus == PaymentStatus.READY;}
     public boolean isComplete() {return this.payStatus == PaymentStatus.COMPLETE;}
     public boolean isFailed() {return this.payStatus == PaymentStatus.FAILED;}
     public boolean isCancelled() {return this.payStatus == PaymentStatus.CANCELLED;}

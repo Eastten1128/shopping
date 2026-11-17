@@ -91,6 +91,8 @@ public class Product extends BaseEntity {
     }
 
     //상품 재고 감소
+    // 동시성 문제 해결 시 지울 것
+    /**
     public void decreaseStock(int quantity){
         this.stock -= quantity;
 
@@ -98,7 +100,7 @@ public class Product extends BaseEntity {
             this.productStatus = ProductStatus.SOLD_OUT;
         }
     }
-
+     */
     //상품 재고 증가
     public void increaseStock(int quantity) {
         this.stock += quantity;

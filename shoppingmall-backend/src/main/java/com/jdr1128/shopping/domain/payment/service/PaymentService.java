@@ -36,9 +36,9 @@ public class PaymentService {
         this.orderProductRepository = orderProductRepository;
     }
 
-    //주문 결제 요청
+    //Ready 결제 생성
     @Transactional
-    public PaymentResponse payOrder(
+    public PaymentResponse createPayment(
             Long memberId,
             Long orderId,
             PaymentRequest request
@@ -57,6 +57,7 @@ public class PaymentService {
             throw new PaymentCancelException();
         }
 
+        //Payment 생성
         Payment payment = new Payment(
                 order,
                 request.getCardCompany(),
@@ -64,6 +65,9 @@ public class PaymentService {
                 order.getTotalOrderPrice()
         );
 
+        //결제 완료시 paymentStatus -> COMPLETE, OrderStatus -> PAY
+        //결제 실패시 PaymentStatus -> FAIL, OrderStatus -> FAIL, 재고 복구
+        /*
         if (request.isPaymentSuccess()){
             payment.complete();
             order.pay();
@@ -72,11 +76,63 @@ public class PaymentService {
             order.fail();
             restoreStock(order.getOrderId());
         }
+         */
 
+        //Payment READY 생성
         Payment savedPayment = paymentRepository.save(payment);
-
         return PaymentResponse.from(savedPayment);
     }
+
+    //Ready 결제 -> Complete 전환
+    @Transactional
+    public PaymentResponse confirmPayment(Long memberId, Long paymentId) {
+        Payment payment = paymentRepository.findMyPaymentForUpdate(memberId, paymentId)
+                .orElseThrow(PaymentNotFoundException::new);
+
+        //이미 결제가 완료된 요청의 재시도는 결과 반환
+        if(payment.isComplete()){
+            return PaymentResponse.from(payment);
+        }
+        //준비 상태가 아닌 경우 예외 처리
+        if (!payment.isReady()){
+            throw new PaymentCancelException();
+        }
+
+        //재고 임시 차감 - 결제 진행 - 재고 차감 확정
+        //Redis 에약 확인 + DB 재고 차감 연결
+
+        //결제 완료
+        payment.complete();
+        //주문도 PAID 확정
+        payment.getOrder().pay();
+
+        return PaymentResponse.from(payment);
+    }
+
+    //Ready 결제 -> FAILED 전환
+    @Transactional
+    public PaymentResponse failPayment(Long memberId, Long paymentId){
+        Payment payment = paymentRepository.findMyPaymentForUpdate(memberId, paymentId)
+                .orElseThrow(PaymentNotFoundException::new);
+
+        //이미 결제 취소된 경우 response 리턴
+        if (payment.isFailed()){
+            return PaymentResponse.from(payment);
+        }
+        //payment -> READY가 아닌 경우 Exception
+        if (!payment.isReady()) {
+            throw new PaymentCancelException();
+        }
+
+        //결제 요청 -> 임시 제고 차감 -> 결제 실패 -> 재고 복구 redis
+
+        //payment 및 해당 Order fail
+        payment.fail();
+        payment.getOrder().fail();
+
+        return PaymentResponse.from(payment);
+    }
+
 
     //결제 정보 조회
     public PaymentResponse getPayment(

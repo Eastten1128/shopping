@@ -100,7 +100,8 @@ public class OrderService {
                 .map(cartItem -> {
                     Product product = cartItem.getProduct();
 
-                    product.decreaseStock(cartItem.getQuantity());
+                    //동시성 문제 해결을 위해 함수 임시주석처리
+                    //product.decreaseStock(cartItem.getQuantity());
 
                     return new OrderProduct(
                             savedOrder,
