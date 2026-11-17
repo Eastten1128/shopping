@@ -1,6 +1,7 @@
 package com.jdr1128.shopping.domain.payment.service;
 
 import com.jdr1128.shopping.domain.order.exception.OutOfStockException;
+import com.jdr1128.shopping.domain.payment.dto.ReservationItem;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,139 +26,181 @@ class StockReservationServiceTest {
     private StringRedisTemplate redisTemplate;
 
     private Long paymentId;
-    private Long productId;
-    private String stockKey;
+    private Long productA;
+    private Long productB;
+
+    private String stockKeyA;
+    private String stockKeyB;
     private String reservationKey;
 
     @BeforeEach
     void setUp() {
-        //결제Id, 상품Id
-        paymentId = randomId();
-        productId = randomId();
+        // 테스트마다 다른 양수 ID 사용
+        long base = ThreadLocalRandom.current()
+                .nextLong(1, Long.MAX_VALUE - 2);
 
-        //재고 키, 예약 키 생성
-        stockKey = "inventory:available:" + productId;
+        paymentId = base;
+        productA = base + 1;
+        productB = base + 2;
+
+        stockKeyA = "inventory:available:" + productA;
+        stockKeyB = "inventory:available:" + productB;
         reservationKey = "reservation:" + paymentId;
 
-        //기본 재고 수량 10 설정
-        redisTemplate.opsForValue().set(stockKey, "10");
+        redisTemplate.opsForValue().set(stockKeyA, "10");
+        redisTemplate.opsForValue().set(stockKeyB, "5");
     }
 
     @AfterEach
     void tearDown() {
-        //테스트 완료 시 redis 데이터 삭제
-        redisTemplate.delete(List.of(stockKey, reservationKey));
+        // 이 테스트에서 사용한 키만 삭제
+        redisTemplate.delete(
+                List.of(stockKeyA, stockKeyB, reservationKey)
+        );
     }
 
     @Test
-    @DisplayName("최초 예약은 재고를 차감하고 ACTIVE 예약을 저장한다")
+    @DisplayName("모든 상품의 재고가 충분하면 전체 예약한다")
     void reserve_success() {
         // when
-        //redis에 결제 요청(결제, 상품, 수량) 주입
-        boolean created =
-                reservationService.reserve(paymentId, productId, 2);
+        boolean created = reservationService.reserve(
+                paymentId,
+                List.of(
+                        new ReservationItem(productA, 2),
+                        new ReservationItem(productB, 3)
+                )
+        );
 
         // then
-        //created가 성공했는지 검사
         assertThat(created).isTrue();
-        //redis에서 재고가 감소했는지 검사
-        assertThat(redisTemplate.opsForValue().get(stockKey))
-                .isEqualTo("8");
-        //결제Id의 상품Id 검사
+        assertStock("8", "2");
+
         assertThat(redisTemplate.opsForHash()
-                .get(reservationKey, "productId"))
-                .isEqualTo(productId.toString());
-        //결제Id의 수량 검사
-        assertThat(redisTemplate.opsForHash()
-                .get(reservationKey, "quantity"))
-                .isEqualTo("2");
-        //결제Id의 상태 검사(ACTIVE)
+                .get(reservationKey, "items"))
+                .isEqualTo(productA + ":2," + productB + ":3");
+
         assertThat(redisTemplate.opsForHash()
                 .get(reservationKey, "status"))
                 .isEqualTo("ACTIVE");
     }
 
     @Test
-    @DisplayName("같은 결제의 동일 요청은 재고를 다시 차감하지 않는다")
-    void reserve_duplicate() {
-        // given
-        //1번째 결제 요청
-        reservationService.reserve(paymentId, productId, 2);
+    @DisplayName("뒤쪽 상품이 부족해도 앞쪽 상품을 차감하지 않는다")
+    void reserve_insufficientStock_changesNothing() {
+        // B는 5개인데 6개 요청
+        assertThatThrownBy(() ->
+                reservationService.reserve(
+                        paymentId,
+                        List.of(
+                                new ReservationItem(productA, 2),
+                                new ReservationItem(productB, 6)
+                        )
+                )
+        ).isInstanceOf(OutOfStockException.class);
 
-        // when
-        // 2번째 결제 요청
-        boolean created =
-                reservationService.reserve(paymentId, productId, 2);
-
-        // then
-        //결제가 실패됐는지
-        assertThat(created).isFalse();
-        //남은 재고가 8개인지 확인
-        assertThat(redisTemplate.opsForValue().get(stockKey))
-                .isEqualTo("8");
-        // 결제 요청의 재고가 2개인지 확인
-        assertThat(redisTemplate.opsForHash()
-                .get(reservationKey, "quantity"))
-                .isEqualTo("2");
+        // A까지 원래 수량을 유지해야 함
+        assertStock("10", "5");
+        assertThat(redisTemplate.hasKey(reservationKey)).isFalse();
     }
 
     @Test
-    @DisplayName("같은 결제에서 수량이 달라지면 거절한다")
-    void reserve_differentQuantity() {
+    @DisplayName("상품 순서가 달라도 동일 예약이면 추가 차감하지 않는다")
+    void reserve_reorderedItems_isDuplicate() {
         // given
-        reservationService.reserve(paymentId, productId, 2);
+        reservationService.reserve(
+                paymentId,
+                List.of(
+                        new ReservationItem(productA, 2),
+                        new ReservationItem(productB, 3)
+                )
+        );
+
+        // when: 순서를 반대로 전달
+        boolean created = reservationService.reserve(
+                paymentId,
+                List.of(
+                        new ReservationItem(productB, 3),
+                        new ReservationItem(productA, 2)
+                )
+        );
+
+        // then
+        assertThat(created).isFalse();
+        assertStock("8", "2");
+    }
+
+    @Test
+    @DisplayName("중복 상품은 합산하고 합산된 재요청도 동일하게 인식한다")
+    void reserve_duplicateProducts_areMerged() {
+        // when: A 1개 + A 2개 = A 3개
+        boolean first = reservationService.reserve(
+                paymentId,
+                List.of(
+                        new ReservationItem(productA, 1),
+                        new ReservationItem(productB, 2),
+                        new ReservationItem(productA, 2)
+                )
+        );
+
+        boolean retry = reservationService.reserve(
+                paymentId,
+                List.of(
+                        new ReservationItem(productA, 3),
+                        new ReservationItem(productB, 2)
+                )
+        );
+
+        // then
+        assertThat(first).isTrue();
+        assertThat(retry).isFalse();
+        assertStock("7", "3");
+
+        assertThat(redisTemplate.opsForHash()
+                .get(reservationKey, "items"))
+                .isEqualTo(productA + ":3," + productB + ":2");
+    }
+
+    @Test
+    @DisplayName("같은 결제의 수량이 변경되면 기존 예약을 유지하고 거절한다")
+    void reserve_changedQuantity_rejected() {
+        // given
+        reservationService.reserve(
+                paymentId,
+                List.of(
+                        new ReservationItem(productA, 2),
+                        new ReservationItem(productB, 3)
+                )
+        );
 
         // when / then
         assertThatThrownBy(() ->
-                reservationService.reserve(paymentId, productId, 3))
+                reservationService.reserve(
+                        paymentId,
+                        List.of(
+                                new ReservationItem(productA, 3),
+                                new ReservationItem(productB, 3)
+                        )
+                )
+        )
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("동일 결제의 예약 내용이 다릅니다.");
 
-        //요청이 올바르게 입력돼서 남은 재고가 8개인지 확인
-        assertThat(redisTemplate.opsForValue().get(stockKey))
-                .isEqualTo("8");
+        assertStock("8", "2");
 
-        //결제 요청이 올바르게 입력돼서 주문량이 2개인지 확인
         assertThat(redisTemplate.opsForHash()
-                .get(reservationKey, "quantity"))
-                .isEqualTo("2");
+                .get(reservationKey, "items"))
+                .isEqualTo(productA + ":2," + productB + ":3");
+
+        assertThat(redisTemplate.opsForHash()
+                .get(reservationKey, "status"))
+                .isEqualTo("ACTIVE");
     }
 
-    @Test
-    @DisplayName("재고가 부족하면 차감하거나 예약을 생성하지 않는다")
-    void reserve_outOfStock() {
-        // when / then
-        //11개 주문
-        assertThatThrownBy(() ->
-                reservationService.reserve(paymentId, productId, 11))
-                .isInstanceOf(OutOfStockException.class);
+    private void assertStock(String expectedA, String expectedB) {
+        assertThat(redisTemplate.opsForValue().get(stockKeyA))
+                .isEqualTo(expectedA);
 
-        //올바르지 않은 주문 - 재고가 그대로인지 확인
-        assertThat(redisTemplate.opsForValue().get(stockKey))
-                .isEqualTo("10");
-        //결제요청이 거부되었는지 확인
-        assertThat(redisTemplate.hasKey(reservationKey)).isFalse();
-    }
-
-    @Test
-    @DisplayName("재고 키가 없으면 초기화 오류를 반환한다")
-    void reserve_missingStock() {
-        // given
-        redisTemplate.delete(stockKey);
-
-        // when / then
-        assertThatThrownBy(() ->
-                reservationService.reserve(paymentId, productId, 2))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("재고 초기화가 필요합니다.");
-
-        assertThat(redisTemplate.hasKey(stockKey)).isFalse();
-        assertThat(redisTemplate.hasKey(reservationKey)).isFalse();
-    }
-
-    //랜덤 Id 생성(1~Long.MAX_VALUE)
-    private Long randomId() {
-        return ThreadLocalRandom.current()
-                .nextLong(1, Long.MAX_VALUE);
+        assertThat(redisTemplate.opsForValue().get(stockKeyB))
+                .isEqualTo(expectedB);
     }
 }

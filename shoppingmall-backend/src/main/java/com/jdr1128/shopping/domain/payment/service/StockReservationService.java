@@ -1,12 +1,17 @@
 package com.jdr1128.shopping.domain.payment.service;
 
 import com.jdr1128.shopping.domain.order.exception.OutOfStockException;
+import com.jdr1128.shopping.domain.payment.dto.ReservationItem;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 @Service
 public class StockReservationService {
@@ -49,25 +54,64 @@ public class StockReservationService {
                 .get("inventory:available:" + productId);
     }
 
-    //단일 상품 예약
-    public boolean reserve(Long paymentId, Long productId, int quantity){
+    // 상품 예약
+    public boolean reserve(Long paymentId, List<ReservationItem> items){
          //결제Id가 없는 경우, 상품Id가 없는 경우, 상품 재고가 없는 경우
         if (paymentId == null || paymentId <= 0
-                || productId == null || productId <= 0
-                || quantity <=0 ){
+                || items == null || items.isEmpty()
+        ){
             throw new IllegalArgumentException("잘못된 예약 요청");
         }
 
-        //Keys, ARGV 생성
-        String stockKey = "inventory:available:" + productId;
-        String reservationKey = "reservation:" + paymentId;
+        //같은 상품 합산, 상품을 ID순으로 정렬
+        Map<Long, Integer> quantities = new TreeMap<>();
+
+        //상품 리스트 각각 검증
+        for (ReservationItem item : items){
+            if(item == null
+                    || item.productId() == null
+                    || item.productId() <= 0
+                    || item.quantity() <= 0){
+                throw new IllegalArgumentException("잘못된 상품 또는 수량");
+            }
+            //같은 상품 합산
+            try {
+                quantities.merge(
+                        item.productId(),
+                        item.quantity(),
+                        Math::addExact //범위를 벗어날경우 overflow, ArithmeticException발생
+                );
+            } catch(ArithmeticException e){
+                throw new IllegalArgumentException("예약 수량이 너무 큽니다.", e);
+            }
+        }
+
+        //중복 요청 비교에 사용할 문자열
+        String canonicalItems = quantities.entrySet().stream()
+                .map(entry -> entry.getKey() + ":" + entry.getValue())
+                .collect(Collectors.joining(","));
+
+        //Lua에 전달하기 위한 Keys 생성
+        List<String> keys = new ArrayList<>();
+        keys.add("reservation:" + paymentId);
+
+        //Lua에 전달하기 위한 ARGV 생성
+        List<String> args = new ArrayList<>();
+        args.add(canonicalItems);
+
+        //상품별 재고 키과 수량을 추가한다. "inventory:available:productId
+        quantities.forEach((productId, quantity) -> {
+            keys.add("inventory:available:" + productId);
+            args.add(quantity.toString());
+        });
 
         //Lua 실행 및 KEYS, ARGV 전달
         Long result = redisTemplate.execute(
                 RESERVE_SCRIPT,
-                List.of(stockKey, reservationKey),
-                productId.toString(),
-                Integer.toString(quantity)
+                keys,
+                args.toArray()
+                //오류 발견!!: toString()을 쓸 경우 구분자가 . 이므로 [101:.102:3, 2,3]"으로 전달됨.
+                //toArray()로 전달하여 각 값이 별도의 인자로 전달되게 수정
         );
 
         if( result == null){
