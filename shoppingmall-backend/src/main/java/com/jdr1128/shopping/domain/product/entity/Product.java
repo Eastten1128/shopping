@@ -3,6 +3,7 @@ package com.jdr1128.shopping.domain.product.entity;
 import com.jdr1128.shopping.domain.category.entity.Category;
 import com.jdr1128.shopping.domain.member.entity.Member;
 import com.jdr1128.shopping.domain.member.entity.Role;
+import com.jdr1128.shopping.domain.order.exception.OutOfStockException;
 import com.jdr1128.shopping.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -91,16 +92,19 @@ public class Product extends BaseEntity {
     }
 
     //상품 재고 감소
-    // 동시성 문제 해결 시 지울 것
-    /**
-    public void decreaseStock(int quantity){
-        this.stock -= quantity;
+    public void decreaseStock(int quantity) {
+        if (quantity <=0){
+            throw new IllegalArgumentException("차감 수량은 양수여야 한다.");
+        }
+        if (stock < quantity) {
+            throw new OutOfStockException();
+        }
 
-        if(this.stock < 0){
+        stock -= quantity;
+        if (stock ==0){
             this.productStatus = ProductStatus.SOLD_OUT;
         }
     }
-     */
     //상품 재고 증가
     public void increaseStock(int quantity) {
         this.stock += quantity;

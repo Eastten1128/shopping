@@ -13,10 +13,19 @@ import com.jdr1128.shopping.domain.payment.exception.AlreadyPaidException;
 import com.jdr1128.shopping.domain.payment.exception.PaymentCancelException;
 import com.jdr1128.shopping.domain.payment.exception.PaymentNotFoundException;
 import com.jdr1128.shopping.domain.payment.repository.PaymentRepository;
+import com.jdr1128.shopping.domain.product.entity.Product;
+import com.jdr1128.shopping.domain.product.repository.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly=true)
@@ -25,15 +34,24 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final OrderProductRepository orderProductRepository;
+    private final ProductRepository productRepository;
+    private final StockReservationService stockReservationService;
+
+    private static final Logger log =
+            LoggerFactory.getLogger(PaymentService.class);
 
     public PaymentService(
             PaymentRepository paymentRepository,
             OrderRepository orderRepository,
-            OrderProductRepository orderProductRepository
+            OrderProductRepository orderProductRepository,
+            ProductRepository productRepository,
+            StockReservationService stockReservationService
     ) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.orderProductRepository = orderProductRepository;
+        this.productRepository = productRepository;
+        this.stockReservationService = stockReservationService;
     }
 
     //Ready 결제 생성
@@ -86,25 +104,69 @@ public class PaymentService {
     //Ready 결제 -> Complete 전환
     @Transactional
     public PaymentResponse confirmPayment(Long memberId, Long paymentId) {
+
+        // 결제 행 잠금
         Payment payment = paymentRepository.findMyPaymentForUpdate(memberId, paymentId)
                 .orElseThrow(PaymentNotFoundException::new);
 
-        //이미 결제가 완료된 요청의 재시도는 결과 반환
-        if(payment.isComplete()){
+        // DB 주문 상품을 합산 정렬
+        Map<Long, Integer> quantities = new TreeMap<>();
+
+        List<OrderProduct> orderProducts = orderProductRepository
+                .findByOrder_OrderId(payment.getOrder().getOrderId());
+
+        for (OrderProduct item : orderProducts) {
+            if (item.getAmount() <= 0 ){
+                throw new IllegalStateException("잘못된 주문 수량");
+            }
+
+            quantities.merge(
+                    item.getProduct().getProductId(),
+                    item.getAmount(),
+                    Math::addExact
+            );
+        }
+
+        if (quantities.isEmpty()) {
+            throw new IllegalStateException("확정할 주문 상품이 없습니다.");
+        }
+
+        String canonicalItems = quantities.entrySet().stream()
+                .map(entry -> entry.getKey() + ":" + entry.getValue())
+                .collect(Collectors.joining(","));
+
+        // 3. 이미 DB 확정된 결제는 다시 차감하지 않음
+        if (payment.isComplete()) {
+            registerConfirmAfterCommit(paymentId, canonicalItems);
             return PaymentResponse.from(payment);
         }
         //준비 상태가 아닌 경우 예외 처리
-        if (!payment.isReady()){
+        if (!payment.isReady()
+                || payment.getOrder().getOrderStatus() != OrderStatus.ORDERED) {
             throw new PaymentCancelException();
         }
 
-        //재고 임시 차감 - 결제 진행 - 재고 차감 확정
-        //Redis 에약 확인 + DB 재고 차감 연결
+        // 4. 예약을 확정 처리 중으로 보호
+        stockReservationService.beginConfirm(paymentId, canonicalItems);
+
+        // 5. 상품 ID순으로 잠그고 DB 실재고 차감
+        for (Map.Entry<Long, Integer> entry : quantities.entrySet()) {
+            Product product = productRepository
+                    .findActiveProductForUpdate(entry.getKey())
+                    .orElseThrow(() ->
+                            new IllegalStateException("확정할 상품이 없습니다."));
+
+            product.decreaseStock(entry.getValue());
+        }
 
         //결제 완료
         payment.complete();
         //주문도 PAID 확정
         payment.getOrder().pay();
+
+        // 실제 DB 커밋 이후 Redis 확정 반영
+        registerConfirmAfterCommit(paymentId, canonicalItems);
+
 
         return PaymentResponse.from(payment);
     }
@@ -182,5 +244,30 @@ public class PaymentService {
         for( OrderProduct orderProduct : orderProducts){
             orderProduct.getProduct().increaseStock(orderProduct.getAmount());
         }
+    }
+
+    private void registerConfirmAfterCommit(
+            Long paymentId,
+            String canonicalItems
+    ) {
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            stockReservationService.completeConfirm(
+                                    paymentId,
+                                    canonicalItems
+                            );
+                        } catch (Exception e) {
+                            log.error(
+                                    "DB 결제 완료 후 Redis 확정 재처리 필요: paymentId={}",
+                                    paymentId,
+                                    e
+                            );
+                        }
+                    }
+                }
+        );
     }
 }
