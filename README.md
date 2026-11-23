@@ -412,17 +412,21 @@ READY, COMPLETE, FAILED, CANCELLED
 
 ## API 엔드포인트
 
+아래는 현재 컨트롤러에 선언된 1차 기능 API입니다. `ALL`은 Access Token 인증 없이 접근할 수 있음을 뜻하며, 그 외 API는 JWT 인증이 필요합니다. 본인 소유 데이터에 대한 접근 제한은 서비스에서 추가로 검증합니다.
+
 ### 회원 `/api/members`
 
 | Method | Endpoint | 설명 | 권한 |
 |---|---|---|---|
 | POST | `/api/members/signup` | 회원가입 | ALL |
-| POST | `/api/members/login` | 로그인 및 JWT 발급 | ALL |
+| POST | `/api/members/login` | 로그인, Access Token 발급 및 Refresh Token 쿠키 설정 | ALL |
+| POST | `/api/members/refresh` | Refresh Token 검증·회전 및 Access Token 재발급 | ALL |
+| POST | `/api/members/logout` | Refresh Token 폐기 및 쿠키 삭제 | ALL |
 | GET | `/api/members/me` | 내 회원정보 조회 | USER, SELLER, ADMIN |
-| PATCH | `/api/members/me` | 내 회원정보 수정 | USER, SELLER, ADMIN |
-| DELETE | `/api/members/me` | 회원 탈퇴, 소프트 딜리트 | USER, SELLER, ADMIN |
-| GET | `/api/members/{memberId}` | 특정 회원 조회 | ADMIN |
-| PATCH | `/api/members/{memberId}/role` | 회원 권한 변경 | ADMIN |
+
+재발급과 로그아웃은 요청 본문 대신 `refreshToken` 쿠키를 사용합니다. 재발급에는 유효한 Refresh Token이 필요합니다.
+
+회원정보 수정·탈퇴, 특정 회원 조회, 회원 권한 변경 API는 아직 구현되지 않았습니다.
 
 ---
 
@@ -430,11 +434,24 @@ READY, COMPLETE, FAILED, CANCELLED
 
 | Method | Endpoint | 설명 | 권한 |
 |---|---|---|---|
-| GET | `/api/categories` | 카테고리 목록 조회 | ALL |
-| GET | `/api/categories/{categoryId}` | 카테고리 단건 조회 | ALL |
+| GET | `/api/categories` | 삭제되지 않은 카테고리 목록 조회 | ALL |
+| GET | `/api/categories/{categoryId}` | 삭제되지 않은 카테고리 단건 조회 | ALL |
 | POST | `/api/categories` | 카테고리 등록 | ADMIN |
-| PATCH | `/api/categories/{categoryId}` | 카테고리 수정 | ADMIN |
+| PATCH | `/api/categories/{categoryId}` | 삭제되지 않은 카테고리 수정 | ADMIN |
 | DELETE | `/api/categories/{categoryId}` | 카테고리 삭제, 소프트 딜리트 | ADMIN |
+
+### 관리자 카테고리 `/api/admin/categories`
+
+| Method | Endpoint | 설명 | 권한 |
+|---|---|---|---|
+| GET | `/api/admin/categories` | 관리자 카테고리 목록 조회, 삭제 항목 포함 여부 선택 | ADMIN |
+| PATCH | `/api/admin/categories/{categoryId}` | 삭제 여부와 관계없이 카테고리 이름 수정, 삭제 상태 유지 | ADMIN |
+
+목록 조회의 `includeDeleted` 기본값은 `false`이며, `true`이면 삭제된 카테고리도 포함합니다.
+
+```text
+GET /api/admin/categories?includeDeleted=true
+```
 
 ---
 
@@ -442,21 +459,33 @@ READY, COMPLETE, FAILED, CANCELLED
 
 | Method | Endpoint | 설명 | 권한 |
 |---|---|---|---|
-| GET | `/api/products` | 상품 목록 조회, 검색, 정렬 | ALL |
-| GET | `/api/products/{productId}` | 상품 상세 조회 | ALL |
-| POST | `/api/products` | 상품 등록 | SELLER, ADMIN |
-| PATCH | `/api/products/{productId}` | 상품 수정 | SELLER, ADMIN |
-| DELETE | `/api/products/{productId}` | 상품 삭제, 소프트 딜리트 | SELLER, ADMIN |
-| PATCH | `/api/products/{productId}/stock` | 상품 재고 수정 | SELLER, ADMIN |
-| POST | `/api/products/{productId}/images` | 상품 이미지 업로드 | SELLER, ADMIN |
-| GET | `/api/products/{productId}/images` | 상품 이미지 목록 조회 | ALL |
-| DELETE | `/api/products/{productId}/images/{imageId}` | 상품 이미지 삭제 | SELLER, ADMIN |
+| GET | `/api/products` | 삭제되지 않은 상품 목록 조회, 카테고리 필터 지원 | ALL |
+| GET | `/api/products/{productId}` | 삭제되지 않은 상품 상세 조회 | ALL |
+| POST | `/api/products` | 로그인한 회원을 판매자로 지정하여 상품 등록 | SELLER, ADMIN |
+| PATCH | `/api/products/{productId}` | 상품 정보·가격·재고·상태 수정 | SELLER(본인 상품), ADMIN |
+| DELETE | `/api/products/{productId}` | 상품 판매 중지 및 소프트 딜리트 | SELLER(본인 상품), ADMIN |
 
-검색 파라미터 예시:
+목록 조회는 선택 파라미터 `categoryId`를 지원합니다. 키워드 검색·정렬·상태 필터·페이지네이션은 현재 구현되지 않았습니다.
 
 ```text
-GET /api/products?categoryId=1&keyword=keyboard&sort=price,asc
-GET /api/products?status=SELLING&page=0&size=20
+GET /api/products
+GET /api/products?categoryId=1
+```
+
+별도 재고 수정 경로는 없으며, 상품 수정 요청의 `stock` 필드로 다른 상품 정보와 함께 수정합니다. 상품 이미지 업로드·목록 조회·삭제 API는 아직 구현되지 않았습니다.
+
+### 판매자 상품 `/api/seller/products`
+
+| Method | Endpoint | 설명 | 권한 |
+|---|---|---|---|
+| GET | `/api/seller/products` | 내 판매상품 목록 조회, 판매 중지 항목 포함 여부 선택 | SELLER |
+| GET | `/api/seller/products/{productId}` | 내 판매상품 상세 조회, 판매 중지 상품도 조회 가능 | SELLER(본인 상품) |
+| PATCH | `/api/seller/products/{productId}` | 내 판매상품 수정, 판매 중지 상품은 중지 상태 유지 | SELLER(본인 상품) |
+
+목록 조회의 `includeStopped` 기본값은 `false`이며, `true`이면 소프트 딜리트된 판매 중지 상품도 포함합니다. 판매 중지는 `DELETE /api/products/{productId}`를 사용합니다.
+
+```text
+GET /api/seller/products?includeStopped=true
 ```
 
 ---
@@ -490,9 +519,10 @@ GET /api/products?status=SELLING&page=0&size=20
 |---|---|---|---|
 | POST | `/api/orders` | 장바구니 기반 주문 생성 | USER, SELLER, ADMIN |
 | GET | `/api/orders` | 내 주문 목록 조회 | USER, SELLER, ADMIN |
-| GET | `/api/orders/{orderId}` | 주문 상세 조회 | USER, SELLER, ADMIN |
-| PATCH | `/api/orders/{orderId}/cancel` | 주문 취소 | USER, SELLER, ADMIN |
-| GET | `/api/orders/{orderId}/products` | 주문상품 목록 조회 | USER, SELLER, ADMIN |
+| GET | `/api/orders/{orderId}` | 내 주문 상세 조회, 주문상품 목록 포함 | USER, SELLER, ADMIN |
+| PATCH | `/api/orders/{orderId}/cancel` | 결제 전 내 주문 취소 | USER, SELLER, ADMIN |
+
+주문상품 목록은 주문 조회 응답의 `orderProducts`에 포함됩니다. 별도 `GET /api/orders/{orderId}/products` API는 구현되지 않았습니다.
 
 주문 생성 요청 예시:
 
@@ -512,11 +542,13 @@ GET /api/products?status=SELLING&page=0&size=20
 
 | Method | Endpoint | 설명 | 권한 |
 |---|---|---|---|
-| POST | `/api/orders/{orderId}/payments` | 주문 결제 요청 | USER, SELLER, ADMIN |
-| GET | `/api/payments/{payId}` | 결제 정보 조회 | USER, SELLER, ADMIN |
-| PATCH | `/api/payments/{payId}/cancel` | 결제 취소 | USER, SELLER, ADMIN |
+| POST | `/api/orders/{orderId}/payments` | 내 주문의 READY 결제 생성 및 Redis 재고 예약 | USER, SELLER, ADMIN |
+| POST | `/api/payments/{payId}/confirm` | 결제 확정, DB 재고 차감 및 주문 PAID 처리 | USER, SELLER, ADMIN |
+| POST | `/api/payments/fail` | 결제 실패 처리, 현재 payId 경로 매핑 수정 필요 | USER, SELLER, ADMIN |
+| GET | `/api/payments/{payId}` | 내 결제 정보 조회 | USER, SELLER, ADMIN |
+| PATCH | `/api/payments/{payId}/cancel` | 완료된 내 결제 취소 | USER, SELLER, ADMIN |
 
-결제 요청 예시:
+결제 생성 요청 예시:
 
 ```json
 {
@@ -524,6 +556,10 @@ GET /api/products?status=SELLING&page=0&size=20
   "cardNumber": "****-****-****-1234"
 }
 ```
+
+결제 확정은 요청 본문 없이 호출합니다. 현재 응답은 `201 Created`이며 본문이 없으므로, 최종 상태는 결제 조회 API로 확인합니다.
+
+> 결제 실패 API는 컨트롤러에 `/api/payments/fail`로 선언되어 있으나 `@PathVariable Long payId`를 요구합니다. 경로에 `{payId}`가 없어 현재 정상 호출할 수 없으며, 소스의 매핑 수정이 필요합니다. 위 표에는 실제 선언된 경로를 기재했습니다.
 
 ---
 
