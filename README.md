@@ -45,10 +45,13 @@ Spring Boot는 루트 또는 `shoppingmall-backend`에서 실행할 때 `.env`�
    - 품절 처리
    - 가격 변동 검증
    - 주문 시점 가격 스냅샷 저장
-5. 비동기 메시징 시스템
+5. 재고 및 결제 동시성 제어
+   - 다중 상품의 재고 검증과 예약을 원자적으로 처리
+   - 복수의 사용자가 동일 상품에 대한 결제에 대해 동시 확정 시 재고 갱신 충돌 방지
+6. 비동기 메시징 시스템
    - RabbitMQ를 활용한 안정적인 결제 처리
    - 1차 구현에서는 모의 결제 또는 동기 처리로 시작 가능
-6. 배포
+7. 배포
    - Docker 기반 실행 환경 구성
    - GitHub Actions 기반 CI/CD 파이프라인 구성
 
@@ -104,7 +107,7 @@ Java 코드에서는 카멜 케이스를 사용하고, DB 테이블 및 컬럼�
 
 ---
 
-## 수정 반영 테이블 구조
+## 테이블 구조
 
 ### Member
 
@@ -174,7 +177,7 @@ SELLING, SOLD_OUT, STOPPED
 
 ---
 
-### ProductImage
+### ProductImage (미구현)
 
 실제 테이블명: `product_images`
 
@@ -217,14 +220,6 @@ SELLING, SOLD_OUT, STOPPED
 | 등록날짜 | `addedAt` | `added_at` | NOT NULL | DATETIME |
 | 수정날짜 | `updatedAt` | `updated_at` |  | DATETIME |
 
-권장 제약조건:
-
-```sql
-UNIQUE (cart_id, product_id)
-```
-
-> `cartPrice`는 장바구니에 상품을 담은 시점의 가격입니다.
-> 주문 생성 시 현재 `Product.price`와 비교하여 가격 변경 여부를 검증합니다.
 
 ---
 
@@ -257,6 +252,7 @@ ORDERED, PAID, CANCELLED, FAILED
 
 ### OrderProduct
 
+자바 엔티티명: `OrderProduct`
 실제 테이블명: `order_products`
 
 | 논리명 | Java 필드명 | DB 컬럼명 | 제약조건 | 타입 |
@@ -374,18 +370,23 @@ READY, COMPLETE, FAILED, CANCELLED
    - 주문 생성 시 상품 재고 확인
    - 결제 성공 또는 주문 확정 시 재고 차감
    - 재고가 0이면 `SOLD_OUT` 상태로 변경
-5. 비동기 메시징 시스템
+5. 재고 및 결제 동시성 제어
+   - 결제 생성 시 Redis에 재고를 임시 예약, 결제 확정 시 DB 실재고 차감
+   - Redis Lua Script로 다중 상품의 재고 검증과 예약을 원자적으로 처리
+   - JPA 비관적 락으로 결제·상품 행을 보호하여 동시 확정 시 재고 갱신 충돌 방지
+   - DB 트랜잭션으로 재고 차감과 결제·주문 상태 변경을 함께 반영
+6. 비동기 메시징 시스템
    - RabbitMQ를 활용한 비동기 결제 처리
    - Dead Letter Queue를 통한 메시지 처리 실패 대응
    - 1차 MVP 이후 적용 권장
-6. 캐싱 시스템
+7. 캐싱 시스템
    - DB를 장바구니 원본 저장소로 사용
    - Redis는 장바구니 조회 성능 개선용 캐시로 사용
    - Ehcache는 상품/카테고리 조회 캐시로 사용
-7. 이미지 관리
+8. 이미지 관리
    - 로컬 파일 시스템을 통한 상품 이미지 업로드/다운로드/삭제
    - 이미지 정렬 순서 관리
-8. 소프트 딜리트
+9. 소프트 딜리트
    - 회원 탈퇴, 상품 삭제, 카테고리 삭제 시 물리 삭제 대신 논리 삭제 처리
    - `isDeleted`, `deletedAt` 컬럼 사용
 
